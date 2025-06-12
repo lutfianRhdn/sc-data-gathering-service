@@ -1,0 +1,8 @@
+node_modules
+dist
+*-lock.json
+*-lock.yaml
+tweets-data
+
+tweet_data
+.env
