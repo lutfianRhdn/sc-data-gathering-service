@@ -2,7 +2,8 @@ import * as mongoDB from "mongodb";
 import log from "../utils/log";
 import { DATABASE_COLLECTION,DATABASE_NAME, DATABASE_URL } from "../configs/env";
 import { Message, sendMessagetoSupervisor } from "../utils/handleMessage";
-export default class DatabaseInteractionWorker {
+import { Worker } from "./Worker";
+export default class DatabaseInteractionWorker implements Worker {
 	private instanceId: string;
 	public isBusy: boolean = false;
 	private client: mongoDB.MongoClient = new mongoDB.MongoClient(DATABASE_URL);
@@ -17,6 +18,9 @@ export default class DatabaseInteractionWorker {
 				`[DatabaseInteractionWorker] Error in constructor: ${error.message}`
 			);
 		});
+	}
+	healthCheck(): void {
+		throw new Error("Method not implemented.");
 	}
 	public getInstanceId(): string {
 		return this.instanceId;
@@ -37,7 +41,7 @@ export default class DatabaseInteractionWorker {
 			);
 		}
 	}
-	private async listenTask(): Promise<void> {
+	async listenTask(): Promise<void> {
 		// Simulate listening for tasks
 		process.on("message", async (message: Message) => {
 			console.log("busy ", this.isBusy)

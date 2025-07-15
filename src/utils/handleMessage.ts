@@ -1,11 +1,11 @@
 import log from "./log";
 
 export type Message = {
-  messageId: string;
-  status: 'completed' | 'failed' | 'error' ;
-  destination?: string; 
-  reason?: 'SERVER_BUSY' | 'NO_TWEET_FOUND' |string;
-  data?: any;
+	messageId: string;
+	status: "completed" | "failed" | "error" | "healthy";
+	destination?: string;
+	reason?: "SERVER_BUSY" | "NO_TWEET_FOUND" | string;
+	data?: any;
 };
 export  function sendMessage({ messageId, status, reason, destination = 'supervisor', data }: Message): void {
   process.stdout.write(JSON.stringify({ messageId, status, reason, data }) + "\n");

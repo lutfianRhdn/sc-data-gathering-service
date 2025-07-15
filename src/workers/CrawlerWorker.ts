@@ -12,8 +12,8 @@ type Task = {
     end_date: Date;
   }
 }
-
-export default class CrawlerWorker {
+import {Worker as WorkerInterface} from './Worker'
+export default class CrawlerWorker implements WorkerInterface {
   private instanceId: string;
   public isBusy: boolean = false;
 
@@ -25,11 +25,40 @@ export default class CrawlerWorker {
     });
   }
 
-  async run(): Promise<void> {
-    log (`[CrawlerWorker] instanceId: ${this.instanceId} is running`, "success");
-    this.listenTask().catch((error) => {
-      log(`[CrawlerWorker] Error in run method: ${error.message}`, "error");
+  async crawling(
+    access_token: string,
+    keywords: string,
+    start_date: string,
+    end_date: string
+  ): Promise<any> {
+    console.log(`[CrawlerWorker] Crawling started for keywords: ${keywords}`);
+    const data = await crawl({
+      ACCESS_TOKEN: access_token,
+      DEBUG_MODE: false,
+      SEARCH_KEYWORDS: keywords,
+      TARGET_TWEET_COUNT: 500,
+      OUTPUT_FILENAME: `tweets_${keywords.replace(/\s+/g, "_")}_${start_date}_${end_date}.csv`,
+      DELAY_EACH_TWEET_SECONDS: 0,
+      DELAY_EVERY_100_TWEETS_SECONDS: 0,
+      SEARCH_TAB: "LATEST",
+      CSV_INSERT_MODE: "REPLACE",
+      SEARCH_FROM_DATE: start_date,
+      SEARCH_TO_DATE: end_date,
     });
+    log(`${data?.cleanTweets.length || 0} Crawling completed for keywords: ${keywords} `,"info"    );
+    return data?.cleanTweets || [];
+  }
+
+  healthCheck(): void {
+    setInterval(()=>
+    sendMessagetoSupervisor({
+      messageId: uuidv4(),
+      status: "healthy",
+      data: {
+        instanceId: this.instanceId,
+        timestamp: new Date().toISOString(),
+      },
+    }), 10000);
   }
 
   async listenTask(): Promise<void> {
@@ -50,7 +79,8 @@ export default class CrawlerWorker {
 				data.keyword,
 				data.start_date,
 				data.end_date
-			);
+        );
+        // const crawled =[]
 
         if (crawled.length === 0) {
           log(`No tweets found for keywords: ${data.keywords}`, "warn");
@@ -85,28 +115,12 @@ export default class CrawlerWorker {
     }
   }
 
-  async crawling(
-    access_token: string,
-    keywords: string,
-    start_date: string,
-    end_date: string
-  ): Promise<any> {
-    console.log(`[CrawlerWorker] Crawling started for keywords: ${keywords}`);
-    const data = await crawl({
-      ACCESS_TOKEN: access_token,
-      DEBUG_MODE: false,
-      SEARCH_KEYWORDS: keywords,
-      TARGET_TWEET_COUNT: 500,
-      OUTPUT_FILENAME: `tweets_${keywords.replace(/\s+/g, "_")}_${start_date}_${end_date}.csv`,
-      DELAY_EACH_TWEET_SECONDS: 0,
-      DELAY_EVERY_100_TWEETS_SECONDS: 0,
-      SEARCH_TAB: "LATEST",
-      CSV_INSERT_MODE: "REPLACE",
-      SEARCH_FROM_DATE: start_date,
-      SEARCH_TO_DATE: end_date,
+  async run(): Promise<void> {
+    log (`[CrawlerWorker] instanceId: ${this.instanceId} is running`, "success");
+    this.listenTask().catch((error) => {
+      log(`[CrawlerWorker] Error in run method: ${error.message}`, "error");
     });
-    log(`${data?.cleanTweets.length || 0} Crawling completed for keywords: ${keywords} `,"info"    );
-    return data?.cleanTweets || [];
+    this.healthCheck();
   }
 }
 

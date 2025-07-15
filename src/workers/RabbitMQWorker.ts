@@ -9,23 +9,20 @@ export class RabbitMQWorker implements Worker {
 	private instanceId: string;
 	public isBusy: boolean = false; // Add isBusy property to track worker status
 	private string_connection: string;
-	private connection: any;
-	private supervisor: Supervisor;
+	private connection: amqp.ChannelModel | null = null; // Use null to indicate uninitialized state
 
-	private consumeQueue: string = "projectQueue";
-	private consumeCompensationQueue: string = "projectCompensationQueueue"; // Add compensation queue
+	private consumeQueue: string = process.env.consumeQueue;
+	private consumeCompensationQueue: string =process.env.consumeCompensationQueue; // Add compensation queue
 	private consumeChannel: any;
 
-	private produceQueue: string = "dataGatheringQueue";
-	private produceChannel: any;
+	private produceQueue: string = process.env.dataGatheringQueue;
+	private produceCompensationQueue: string =
+		process.env.dataGatheringCompensationQueue; // Add compensation queue
+	private produceChannel: amqp.Channel;
 
 	constructor() {
-		// if (!config.string_connection) {
-		// log("[RabbitMQWorker] Connection string is required", "error");
-		// }
 		this.instanceId = `RabbitMqWorker-${uuidv4()}`;
-		// this.supervisor = supervisor;
-		this.string_connection = RABBITMQ_URL;
+		this.string_connection = process.env.rabbitMqUrl || RABBITMQ_URL;
 		this.run().catch((error) => {
 			log(
 				`[RabbitMQWorker] Error in run method: ${error.message}`,
@@ -33,6 +30,21 @@ export class RabbitMQWorker implements Worker {
 			);
 		});
 	}
+	healthCheck(): void {
+		setInterval(
+			() =>
+				sendMessagetoSupervisor({
+					messageId: uuidv4(),
+					status: "healthy",
+					data: {
+						instanceId: this.instanceId,
+						timestamp: new Date().toISOString(),
+					},
+				}),
+			10000
+		);
+	}
+
 	public getInstanceId(): string {
 		return this.instanceId;
 	}
@@ -55,13 +67,13 @@ export class RabbitMQWorker implements Worker {
 					"error"
 				);
 			});
-			this.connection.on("close", ( reason) => {
-					sendMessagetoSupervisor({
-						messageId: uuidv4(),
-						status: "error",
-						reason: reason.message || reason.toString(),
-						data: [],
-					});
+			this.connection.on("close", (reason) => {
+				sendMessagetoSupervisor({
+					messageId: uuidv4(),
+					status: "error",
+					reason: reason.message || reason.toString(),
+					data: [],
+				});
 				log(
 					`[RabbitMQWorker] Connection closed ${reason}`,
 					"error"
@@ -78,13 +90,19 @@ export class RabbitMQWorker implements Worker {
 					`[RabbitMQWorker] Connection blocked: ${reason}`,
 					"error"
 				);
-
-			})
-			
-			this.linstenTask().catch((error) => log(`[RabbitMQWorker] Error in linstenTask method: ${error.message}`,"error"));
-			log(`[RabbitMQWorker] instanceId: ${this.instanceId} is running`,"success");
+			});
+			this.healthCheck();
+			this.listenTask().catch((error) =>
+				log(
+					`[RabbitMQWorker] Error in linstenTask method: ${error.message}`,
+					"error"
+				)
+			);
+			log(
+				`[RabbitMQWorker] instanceId: ${this.instanceId} is running`,
+				"success"
+			);
 			await this.consumeMessage(this.consumeQueue);
-			
 		} catch (error) {
 			log(
 				`[RabbitMQWorker] Failed to run worker: ${error.message}`,
@@ -93,48 +111,56 @@ export class RabbitMQWorker implements Worker {
 			throw error;
 		}
 	}
-	public async consumeMessage(queueName:string): Promise<void> {
+	public async consumeMessage(queueName: string): Promise<void> {
 		if (!this.connection) {
 			log("[RabbitMQWorker] Connection is not established", "error");
 			throw new Error("Connection is not established");
 		}
 		this.consumeChannel = await this.connection.createChannel();
-			await this.consumeChannel.assertQueue(queueName, {
-				durable: true,
-			});
-		log(`[RabbitMQWorker] Listening to consume queue: ${queueName}`, "info");
+		await this.consumeChannel.assertQueue(queueName, {
+			durable: true,
+		});
+		log(
+			`[RabbitMQWorker] Listening to consume queue: ${queueName}`,
+			"info"
+		);
 		this.consumeChannel.consume(
-				queueName,
-				(msg) => {
-					if (msg !== null) {
-						const messageContent = msg.content.toString();
-						if (queueName === this.consumeQueue) {
-							sendMessagetoSupervisor({
-								messageId: uuidv4(),
-								status: "completed",
-								data: JSON.parse(messageContent),
-								destination: "CrawlerWorker",
-							});
-						} else if (queueName === this.consumeCompensationQueue) {
-							// sendMessagetoSupervisor({
-							// 	messageId: uuidv4(),
-							// 	status: "error",
-							// 	reason: "ROLLBACK",
-							// 	data: JSON.parse(messageContent),
-							// 	destination: "DatabaseInteractionWorker",
-							// });
-						}
+			queueName,
+			(msg) => {
+				if (msg !== null) {
+					const messageContent = msg.content.toString();
+					if (queueName === this.consumeQueue) {
+						sendMessagetoSupervisor({
+							messageId: uuidv4(),
+							status: "completed",
+							data: JSON.parse(messageContent),
+							destination: "CrawlerWorker",
+						});
+					} else if (
+						queueName === this.consumeCompensationQueue
+					) {
+						// sendMessagetoSupervisor({
+						// 	messageId: uuidv4(),
+						// 	status: "error",
+						// 	reason: "ROLLBACK",
+						// 	data: JSON.parse(messageContent),
+						// 	destination: "DatabaseInteractionWorker",
+						// });
 					}
-				},
-				{ noAck: true }
-			);
+				}
+			},
+			{ noAck: true }
+		);
 	}
-	public async produceMessage(message: any,queueName: string = this.produceQueue): Promise<void> {
+	public async produceMessage(
+		message: any,
+		queueName: string = this.produceQueue
+	): Promise<void> {
 		try {
 			this.produceChannel = await this.connection.createChannel();
-				await this.produceChannel.assertQueue(queueName, {
-					durable: true,
-				});
+			await this.produceChannel.assertQueue(queueName, {
+				durable: true,
+			});
 			if (!this.produceChannel) {
 				throw new Error("Produce channel is not initialized");
 			}
@@ -148,24 +174,46 @@ export class RabbitMQWorker implements Worker {
 			console.error("Failed to send message to RabbitMQ:", error);
 		}
 	}
-	public async linstenTask(): Promise<void> {
+	async listenTask(): Promise<void> {
 		try {
 			process.on("message", async (message: Message) => {
 				const { messageId, data, status, reason } = message;
-				log(`[RabbitMQWorker] Received message: ${messageId}`, "info");
+				log(
+					`[RabbitMQWorker] Received message: ${messageId}`,
+					"info"
+				);
 				if (status === "failed" && reason === "NO_TWEET_FOUND") {
-					this.produceMessage(data, this.consumeCompensationQueue).then(() => {
-						log(`[RabbitMQWorker] Message ${messageId} sent to compensation queue`, "info");
-					}).catch((error) => {
-						log(`[RabbitMQWorker] Error sending message ${messageId} to compensation queue: ${error.message}`, "error");
-					});
-					return
+					this.produceMessage(
+						data,
+						this.consumeCompensationQueue
+					)
+						.then(() => {
+							log(
+								`[RabbitMQWorker] Message ${messageId} sent to compensation queue`,
+								"info"
+							);
+						})
+						.catch((error) => {
+							log(
+								`[RabbitMQWorker] Error sending message ${messageId} to compensation queue: ${error.message}`,
+								"error"
+							);
+						});
+					return;
 				}
-				this.produceMessage(data, this.produceQueue).then(() => {
-					log(`[RabbitMQWorker] Message ${messageId} sent to consume queue`, "info");
-				}).catch((error) => {
-					log(`[RabbitMQWorker] Error sending message ${messageId} to consume queue: ${error.message}`, "error");
-				});
+				this.produceMessage(data, this.produceQueue)
+					.then(() => {
+						log(
+							`[RabbitMQWorker] Message ${messageId} sent to consume queue`,
+							"info"
+						);
+					})
+					.catch((error) => {
+						log(
+							`[RabbitMQWorker] Error sending message ${messageId} to consume queue: ${error.message}`,
+							"error"
+						);
+					});
 			});
 			// await this.produceMessage(task);
 		} catch (error) {

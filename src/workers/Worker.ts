@@ -1,4 +1,5 @@
 export interface Worker {
-  run(): Promise<void>;
-  linstenTask(task: any): Promise<void>;
+	run(): Promise<void>;
+	healthCheck(): void;
+	listenTask(): Promise<void>;
 }
