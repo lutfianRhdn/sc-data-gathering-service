@@ -84,8 +84,7 @@ export class RabbitMQWorker implements Worker {
 					messageId: uuidv4(),
 					status: "error",
 					data: [],
-					destination: "CrawlerWorker",
-				});
+					reason: reason,});
 				log(
 					`[RabbitMQWorker] Connection blocked: ${reason}`,
 					"error"
@@ -134,7 +133,7 @@ export class RabbitMQWorker implements Worker {
 							messageId: uuidv4(),
 							status: "completed",
 							data: JSON.parse(messageContent),
-							destination: "CrawlerWorker",
+							destination: ["CrawlerWorker/crawling"],
 						});
 					} else if (
 						queueName === this.consumeCompensationQueue

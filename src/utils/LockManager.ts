@@ -34,7 +34,7 @@ export default class LockManager {
 
   }
   public releaseLock(key: string): void {
-    this.redisInstance.del(key).then((result) => {
+    this.redisInstance.del(this.prefixKey+key).then((result) => {
       if (result === 1) {
         console.log(`Lock for ${key} released.`);
       } else {
