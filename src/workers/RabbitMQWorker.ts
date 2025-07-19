@@ -15,7 +15,7 @@ export class RabbitMQWorker implements Worker {
 	private consumeCompensationQueue: string =process.env.consumeCompensationQueue; // Add compensation queue
 	private consumeChannel: any;
 
-	private produceQueue: string = process.env.dataGatheringQueue;
+	private produceQueue: string = 'dataGatheringQueue';
 	private produceCompensationQueue: string =
 		process.env.dataGatheringCompensationQueue; // Add compensation queue
 	private produceChannel: amqp.Channel;
@@ -135,6 +135,7 @@ export class RabbitMQWorker implements Worker {
 							data: JSON.parse(messageContent),
 							destination: ["CrawlerWorker/crawling"],
 						});
+
 					} else if (
 						queueName === this.consumeCompensationQueue
 					) {
@@ -163,6 +164,7 @@ export class RabbitMQWorker implements Worker {
 			if (!this.produceChannel) {
 				throw new Error("Produce channel is not initialized");
 			}
+			console.log(message, queueName);
 			const messageBuffer = Buffer.from(JSON.stringify(message));
 			this.produceChannel.sendToQueue(
 				queueName, // Use the specified queue name

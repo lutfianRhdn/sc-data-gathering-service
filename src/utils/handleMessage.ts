@@ -9,7 +9,6 @@ export type Message = {
 };
 export  function sendMessage({ messageId, status, reason, destination = ['supervisor'], data }: Message): void {
   process.stdout.write(JSON.stringify({ messageId, status, reason, data }) + "\n");
-  log(`Message ${messageId} sended to ${destination} with status: ${status}`, "info");
 }
 export function sendMessagetoSupervisor({
 	messageId,
@@ -19,10 +18,6 @@ export function sendMessagetoSupervisor({
 	data,
 }: Message): void {
 	process.send!({ status: status, messageId,destination, reason, data });
-	log(
-		`Message ${messageId} sent to supervisor with status: ${status}`,
-		"info"
-	);
 }
 export function reciveMessage(): Promise<any> {
   return new Promise((resolve) => {

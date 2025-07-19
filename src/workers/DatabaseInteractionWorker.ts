@@ -15,7 +15,7 @@ export default class DatabaseInteractionWorker implements Worker {
 
 	constructor() {
 		this.instanceId = `DatabaseInteractionWorker-${Date.now()}`;
-
+		console.log(DATABASE_URL, DATABASE_NAME, DATABASE_COLLECTION);
 		this.run().catch((error) => {
 			console.error(
 				`[DatabaseInteractionWorker] Error in constructor: ${error.message}`
@@ -43,7 +43,8 @@ export default class DatabaseInteractionWorker implements Worker {
 						`[DatabaseInteractionWorker] Error connecting to MongoDB: ${error.message}`,
 						"error"
 					)
-				);
+			);
+			
 			this.listenTask().catch((error) => {
 				log(
 					`[DatabaseInteractionWorker] Error in run method: ${error.message}`,
@@ -101,7 +102,7 @@ export default class DatabaseInteractionWorker implements Worker {
 		});
 	}
 
-	public async createNewData(data: any): Promise<any> {
+	public async createNewData({data}: any): Promise<any> {
 		try {
 			if (!data || data.length === 0) {
 				log(
@@ -115,8 +116,13 @@ export default class DatabaseInteractionWorker implements Worker {
 				`[DatabaseInteractionWorker] Successfully inserted ${insertedData.insertedCount}/${data.length} documents`,
 				"success"
 			);
+		
 			return {
-				data: Object.values(insertedData.insertedIds),
+				data: {
+					projectId: data[0].projectId,
+					tweetId:
+					Object.values(insertedData.insertedIds).map(id => id.toString())
+				},
 				destination: [
 					`RabbitMQWorker/produceData/${data[0].projectId}`,
 				],
@@ -129,8 +135,9 @@ export default class DatabaseInteractionWorker implements Worker {
 		}
 	}
 
-	public async getCrawledData(data: any): Promise<any> {
+	public async getCrawledData({data}: any): Promise<any> {
 		try {
+			console.log(data)
 			const { keyword, start_date ,end_date} = data;
 			if (!data || data.length === 0) {
 				log(
@@ -142,19 +149,34 @@ export default class DatabaseInteractionWorker implements Worker {
 			const query: mongoDB.Filter<mongoDB.Document> = {
 				full_text: {
 					$regex: keyword,
-					$options: "i", // Case-insensitive search
+				  $options: "i", // Case-insensitive search
 				},
-				created_at: {
+				createdAt: {
 					$gte: new Date(start_date),
 					$lte: new Date(end_date),
 				},
 			};
-			const crawledData = await this.collection.find(query).toArray();
+		
+			const crawledData = await this.collection.aggregate([
+				{
+					$addFields: {
+						createdAt: {
+							$toDate: "$created_at",
+						}
+					}
+				},
+				{
+					$match: query,
+				},
+			]).toArray();
+			log(
+				`[DatabaseInteractionWorker] Successfully fetched ${crawledData.length} documents for keyword: ${keyword}`,
+				"success"
+			);
+
 			return {
 				data: crawledData,
-				destination: [
-					`CrawlerWorker/onFechedData`,
-				],
+				destination: [`CrawlerWorker/onFechedData`],
 			};
 		} catch (error) {
 			log(
