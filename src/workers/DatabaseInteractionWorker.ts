@@ -15,7 +15,6 @@ export default class DatabaseInteractionWorker implements Worker {
 
 	constructor() {
 		this.instanceId = `DatabaseInteractionWorker-${Date.now()}`;
-		console.log(DATABASE_URL, DATABASE_NAME, DATABASE_COLLECTION);
 		this.run().catch((error) => {
 			console.error(
 				`[DatabaseInteractionWorker] Error in constructor: ${error.message}`
@@ -60,7 +59,6 @@ export default class DatabaseInteractionWorker implements Worker {
 	async listenTask(): Promise<void> {
 		// Simulate listening for tasks
 		process.on("message", async (message: Message) => {
-			console.log("busy ", this.isBusy);
 			if (this.isBusy) {
 				log(
 					`[DatabaseInteractionWorker] Worker is busy, cannot process new task`,
@@ -102,7 +100,7 @@ export default class DatabaseInteractionWorker implements Worker {
 		});
 	}
 
-	public async createNewData({data}: any): Promise<any> {
+	public async createNewData({data,id:pId}: any): Promise<any> {
 		try {
 			if (!data || data.length === 0) {
 				log(
@@ -119,13 +117,12 @@ export default class DatabaseInteractionWorker implements Worker {
 		
 			return {
 				data: {
-					projectId: data[0].projectId,
-					tweetId:
-					Object.values(insertedData.insertedIds).map(id => id.toString())
+					projectId: pId,
+					tweetId: Object.values(insertedData.insertedIds).map(
+						(id) => id.toString()
+					),
 				},
-				destination: [
-					`RabbitMQWorker/produceData/${data[0].projectId}`,
-				],
+				destination: [`RabbitMQWorker/produceData/${pId}`],
 			};
 		} catch (error) {
 			log(
@@ -137,7 +134,7 @@ export default class DatabaseInteractionWorker implements Worker {
 
 	public async getCrawledData({data}: any): Promise<any> {
 		try {
-			console.log(data)
+			// console.log(data)
 			const { keyword, start_date ,end_date} = data;
 			if (!data || data.length === 0) {
 				log(

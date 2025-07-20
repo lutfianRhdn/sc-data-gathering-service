@@ -80,9 +80,15 @@ log(
 					data: [],
 					splited_range: [],
 				});
+				const regexFilter = new RegExp(data.keyword.replace(' ','|'), 'i');
+
+const filteredCrawled = crawled.filter((c: any) =>
+	regexFilter.test(c.full_text)
+);
+				console.log(`[CrawlerWorker] Crawled ${crawled.length} tweets for keyword: ${data.keyword}, filtered to ${filteredCrawled.length} tweets matching the keyword.`);
 				if (crawled.length === 0) {
 					log(
-						`No tweets found for keywords: ${data.keywords}`,
+						`No tweets found for keywords: ${data.keyword}`,
 						"warn"
 					);
 					sendMessagetoSupervisor({
@@ -99,7 +105,7 @@ log(
 					destination: [
 						`DatabaseInteractionWorker/createNewData/${message.data.projectId}`,
 					],
-					data: crawled,
+					data: filteredCrawled,
 				});
 				this.isBusy = false;
 	}
@@ -131,21 +137,20 @@ log(
 					}
 				})
 		)) as any[];
+		console.log(`[CrawlerWorker] Fetched crawled data from database for ${keyword}:`, crawledDataFromDatabase.length);
 
 		const crawledDataMapped = crawledDataFromDatabase.map((tweet) => ({
-			created_at: new Date(tweet.created_at),
+			created_at: new Date(tweet.createdAt),
 		}));
 		crawledDataMapped.sort(
 			(a, b) => a.created_at.getTime() - b.created_at.getTime()
 		);
-		const crawledRanges = {
+		const crawledRanges = crawledDataMapped.length === 0 ? null : {
 			from:  new Date(crawledDataMapped[0]?.created_at)?.toISOString(),
 			to: new Date(crawledDataMapped[
 				crawledDataMapped.length - 1
 			]?.created_at)?.toISOString(),
 		};
-		console.log(
-			`[CrawlerWorker] Crawled ranges from database for ${keyword}: ${crawledRanges.from} to ${crawledRanges.to}`)
 		console.log(
 			`[CrawlerWorker] Crawling started for keywords: ${keyword}`
 		);
@@ -159,7 +164,7 @@ log(
 					main_range.end
 				) || [];
 				console.log(`[CrawlerWorker] Overlap ranges for ${keyword}:`, overlapRanges);
-				if(crawledRanges.from && crawledRanges.to) overlapRanges.push(crawledRanges);
+				if( crawledRanges !== null &&(crawledRanges.from && crawledRanges.to)) overlapRanges.push(crawledRanges);
 				if (overlapRanges && overlapRanges.length > 0) {
 				// Add crawledRanges from database
 
@@ -172,6 +177,13 @@ log(
 						{ ...main_range },
 						overlapRanges
 					);
+					if (!splitRanges || splitRanges.length === 0) {
+						console.warn(
+							`[CrawlerWorker] No valid split ranges found for ${keyword} between ${main_range.start} and ${main_range.end}`
+						);
+						console.log(param.data)
+						return param.data;
+					}
 
 				// Convert split ranges to CrawlParam format
 				param.splited_range = splitRanges.map((range) => ({
@@ -228,23 +240,35 @@ log(
 			);
 
 			// Actual crawling logic (commented out for now)
-			const crawledData = await crawl({
-				ACCESS_TOKEN: access_token,
-				DEBUG_MODE: false,
-				SEARCH_KEYWORDS: keyword,
-				TARGET_TWEET_COUNT: 500,
-				OUTPUT_FILENAME: `tweets2_${keyword.replace(/\s+/g, "_")}_${
-					currentRange.start
-				}_${currentRange.end}.csv`,
-				DELAY_EACH_TWEET_SECONDS: 3,
-				DELAY_EVERY_100_TWEETS_SECONDS: 30,
-				SEARCH_TAB: "LATEST",
-				CSV_INSERT_MODE: "REPLACE",
-				SEARCH_FROM_DATE: currentRange.start,
-				SEARCH_TO_DATE: currentRange.end,
-			});
-			console.log(crawledData)
-
+			// const crawledData = await crawl({
+			// 	ACCESS_TOKEN: access_token,
+			// 	DEBUG_MODE: false,
+			// 	SEARCH_KEYWORDS: keyword,
+			// 	TARGET_TWEET_COUNT: 500,
+			// 	OUTPUT_FILENAME: `tweets2_${keyword.replace(/\s+/g, "_")}_${
+			// 		currentRange.start
+			// 	}_${currentRange.end}.csv`,
+			// 	DELAY_EACH_TWEET_SECONDS: 3,
+			// 	DELAY_EVERY_100_TWEETS_SECONDS: 30,
+			// 	SEARCH_TAB: "LATEST",
+			// 	CSV_INSERT_MODE: "REPLACE",
+			// 	SEARCH_FROM_DATE: currentRange.start,
+			// 	SEARCH_TO_DATE: currentRange.end,
+			// });
+			const crawledData = {
+				cleanTweets: [
+					{
+						id: "123456789",
+						full_text: `Sample tweet for ${keyword} from ${currentRange.start} to ${currentRange.end}`,
+						created_at: new Date().toISOString(),
+					},
+					{
+						id: "987654321",
+						full_text: `Another sample tweet for ${keyword} from ${currentRange.start} to ${currentRange.end}`,
+						created_at: new Date().toISOString(),
+					},
+				],
+			}
 			// Add crawled data to the param.data array
 			param.data.push(...(crawledData?.cleanTweets || []));
 
@@ -257,7 +281,7 @@ log(
 			);
 
 			// Release lock after processing
-			await this.lockManager.releaseLock(lockKey);
+			// await this.lockManager.releaseLock(lockKey);
 
 			// Recursive call for next range - pass the updated param with accumulated data
 			return await this.getTweets(param, index, nestedIndex + 1);
@@ -285,8 +309,7 @@ log(
 	async listenTask(): Promise<void> {
 		try {
 			process.on("message", async (message: Message) => {
-				console.log(message);
-				if (this.isBusy) {
+				if (this.isBusy && message.destination.some((d) => d.includes("CrawlerWorker/crawling"))) {
 					sendMessagetoSupervisor({
 						...message,
 						status: "failed",
@@ -296,7 +319,7 @@ log(
 					return;
 				}
 				const { destination, data, messageId } = message;
-				// this.isBusy = true;
+				this.isBusy = true;
 					const dest = destination.filter((d) =>
 								d.includes("CrawlerWorker")
 							);
@@ -309,15 +332,7 @@ log(
 								const path = destinationSplited[1];
 								const subPath = destinationSplited[2];
 								await this[path](message);
-								// const { data: res, destination } = result;
-								// if (result) {
-								// 	sendMessagetoSupervisor({
-								// 		messageId: message.messageId,
-								// 		status: "completed",
-								// 		data: res,
-								// 		destination: destination,
-								// 	});
-								// }
+							
 							});
 
 			});

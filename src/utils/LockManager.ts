@@ -8,9 +8,6 @@ export default class LockManager {
     this.redisInstance.on("error", (err) => {
       console.error("Redis error:", err);
     });
-    this.redisInstance.on("connect", () => {
-      console.log("Connected to Redis");
-    });
     if(!this.redisInstance.isOpen) {
       this.redisInstance.connect().catch(err => {
         console.error("Failed to connect to Redis:", err);

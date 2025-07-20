@@ -1,5 +1,5 @@
 import log from "./utils/log";
-import { ChildProcess, spawn } from "child_process";
+import { ChildProcess, spawn,execSync } from "child_process";
 import path from "path";
 import { Message } from "./utils/handleMessage";
 import { workerConfig } from "./configs/worker";
@@ -201,8 +201,14 @@ export default class Supervisor {
 				`[Supervisor] message received ${messageId} from PID : ${processId}`
 			);
 
-			let availableWorkers = this.workers.filter((worker) =>
-				worker.spawnargs.some((args) => args.includes(workerName))
+			let availableWorkers = this.workers.filter((worker) => {
+				const usSameWorkerName= worker.spawnargs.some((args) => args.includes(workerName)) 
+				const isAlive = this.isWorkerAlive(worker);
+				const isReady = execSync(
+					`ps -o state= -p ${worker.pid}`
+				).toString().trim() === "R";
+				return usSameWorkerName && isAlive && !isReady;
+			}
 			);
 			// Track message sebelum dikirim
 			this.trackPendingMessage(workerName, message);
@@ -238,7 +244,7 @@ export default class Supervisor {
 
 			if (status === "failed" && reason === "SERVER_BUSY") {
 				availableWorkers = availableWorkers.filter(
-					(worker) => worker.pid !== processId
+					(worker) => worker.pid !== processId 
 				);
 			}
 

@@ -164,7 +164,6 @@ export class RabbitMQWorker implements Worker {
 			if (!this.produceChannel) {
 				throw new Error("Produce channel is not initialized");
 			}
-			console.log(message, queueName);
 			const messageBuffer = Buffer.from(JSON.stringify(message));
 			this.produceChannel.sendToQueue(
 				queueName, // Use the specified queue name

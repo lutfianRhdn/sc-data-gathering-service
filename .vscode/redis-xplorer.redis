@@ -12,21 +12,21 @@ atomicvar_api:c11-builtin
 gcc_version:12.2.0
 process_id:1
 process_supervised:no
-run_id:8f59856d8293e6a262a1bd4ea7e1cb0ab67b3a1d
+run_id:d14017057d2781b920b0fb608b07b3285129c45e
 tcp_port:6379
-server_time_usec:1752960266120833
-uptime_in_seconds:8288
+server_time_usec:1753045510794308
+uptime_in_seconds:10707
 uptime_in_days:0
 hz:10
 configured_hz:10
-lru_clock:8129802
+lru_clock:8215046
 executable:/data/redis-server
 config_file:
 io_threads_active:0
 listener0:name=tcp,bind=*,bind=-::*,port=6379
 
 # Clients
-connected_clients:2
+connected_clients:1
 cluster_connections:0
 maxclients:10000
 client_recent_max_input_buffer:0
@@ -41,20 +41,20 @@ total_blocking_keys:0
 total_blocking_keys_on_nokey:0
 
 # Memory
-used_memory:1081432
-used_memory_human:1.03M
-used_memory_rss:23298048
-used_memory_rss_human:22.22M
-used_memory_peak:1081432
-used_memory_peak_human:1.03M
-used_memory_peak_perc:100.00%
+used_memory:1112976
+used_memory_human:1.06M
+used_memory_rss:23166976
+used_memory_rss_human:22.09M
+used_memory_peak:1149560
+used_memory_peak_human:1.10M
+used_memory_peak_perc:96.82%
 used_memory_overhead:1031040
 used_memory_startup:961296
-used_memory_dataset:50392
-used_memory_dataset_perc:41.95%
-allocator_allocated:2001952
-allocator_active:2183168
-allocator_resident:5885952
+used_memory_dataset:81936
+used_memory_dataset_perc:54.02%
+allocator_allocated:2242688
+allocator_active:2510848
+allocator_resident:6217728
 allocator_muzzy:0
 total_system_memory:5683093504
 total_system_memory_human:5.29G
@@ -74,14 +74,14 @@ used_memory_scripts_human:192B
 maxmemory:0
 maxmemory_human:0B
 maxmemory_policy:noeviction
-allocator_frag_ratio:1.07
-allocator_frag_bytes:105184
-allocator_rss_ratio:2.70
-allocator_rss_bytes:3702784
-rss_overhead_ratio:3.96
-rss_overhead_bytes:17412096
-mem_fragmentation_ratio:21.95
-mem_fragmentation_bytes:22236856
+allocator_frag_ratio:1.11
+allocator_frag_bytes:192128
+allocator_rss_ratio:2.48
+allocator_rss_bytes:3706880
+rss_overhead_ratio:3.73
+rss_overhead_bytes:16949248
+mem_fragmentation_ratio:20.85
+mem_fragmentation_bytes:22055824
 mem_not_counted_for_evict:0
 mem_replication_backlog:0
 mem_total_replication_buffers:0
@@ -107,13 +107,13 @@ current_save_keys_processed:0
 current_save_keys_total:0
 rdb_changes_since_last_save:0
 rdb_bgsave_in_progress:0
-rdb_last_save_time:1752960242
+rdb_last_save_time:1753042005
 rdb_last_bgsave_status:ok
 rdb_last_bgsave_time_sec:0
 rdb_current_bgsave_time_sec:-1
-rdb_saves:1
-rdb_last_cow_size:528384
-rdb_last_load_keys_expired:0
+rdb_saves:2
+rdb_last_cow_size:516096
+rdb_last_load_keys_expired:1
 rdb_last_load_keys_loaded:0
 aof_enabled:0
 aof_rewrite_in_progress:0
@@ -129,14 +129,14 @@ module_fork_in_progress:0
 module_fork_last_cow_size:0
 
 # Threads
-io_thread_0:clients=2,reads=79,writes=41
+io_thread_0:clients=1,reads=112,writes=80
 
 # Stats
-total_connections_received:39
-total_commands_processed:87
+total_connections_received:32
+total_commands_processed:119
 instantaneous_ops_per_sec:0
-total_net_input_bytes:4507
-total_net_output_bytes:6564
+total_net_input_bytes:7391
+total_net_output_bytes:19699
 total_net_repl_input_bytes:0
 total_net_repl_output_bytes:0
 instantaneous_input_kbps:0.00
@@ -151,7 +151,7 @@ expired_subkeys:0
 expired_keys:0
 expired_stale_perc:0.00
 expired_time_cap_reached_count:0
-expire_cycle_cpu_milliseconds:203
+expire_cycle_cpu_milliseconds:346
 evicted_keys:0
 evicted_clients:0
 evicted_scripts:0
@@ -162,8 +162,8 @@ keyspace_misses:0
 pubsub_channels:0
 pubsub_patterns:0
 pubsubshard_channels:0
-latest_fork_usec:2719
-total_forks:1
+latest_fork_usec:403
+total_forks:2
 migrate_cached_sockets:0
 slave_expires_tracked_keys:0
 active_defrag_hits:0
@@ -178,19 +178,19 @@ tracking_total_prefixes:0
 unexpected_error_replies:0
 total_error_replies:0
 dump_payload_sanitizations:0
-total_reads_processed:79
-total_writes_processed:41
+total_reads_processed:112
+total_writes_processed:80
 io_threaded_reads_processed:0
 io_threaded_writes_processed:0
 client_query_buffer_limit_disconnections:0
 client_output_buffer_limit_disconnections:0
-reply_buffer_shrinks:38
-reply_buffer_expands:0
-eventloop_cycles:82086
-eventloop_duration_sum:26199494
-eventloop_duration_cmd_sum:2829
+reply_buffer_shrinks:32
+reply_buffer_expands:1
+eventloop_cycles:106150
+eventloop_duration_sum:30709094
+eventloop_duration_cmd_sum:1074
 instantaneous_eventloop_cycles_per_sec:9
-instantaneous_eventloop_duration_usec:359
+instantaneous_eventloop_duration_usec:274
 acl_access_denied_auth:0
 acl_access_denied_cmd:0
 acl_access_denied_key:0
@@ -200,9 +200,9 @@ acl_access_denied_channel:0
 role:master
 connected_slaves:0
 master_failover_state:no-failover
-master_replid:e50e8f71db2a4c45bd23dd4b0ab160fad605a6fb
+master_replid:023bbf92b3fc223a5a6313f7709432ad7b016f68
 master_replid2:0000000000000000000000000000000000000000
-master_repl_offset:0
+master_repl_offset:95
 second_repl_offset:-1
 repl_backlog_active:0
 repl_backlog_size:1048576
@@ -210,18 +210,18 @@ repl_backlog_first_byte_offset:0
 repl_backlog_histlen:0
 
 # CPU
-used_cpu_sys:2.504262
-used_cpu_user:26.726672
-used_cpu_sys_children:0.017386
-used_cpu_user_children:0.010301
-used_cpu_sys_main_thread:2.500984
-used_cpu_user_main_thread:26.729033
+used_cpu_sys:7.870183
+used_cpu_user:26.619018
+used_cpu_sys_children:0.023505
+used_cpu_user_children:0.007233
+used_cpu_sys_main_thread:6.533345
+used_cpu_user_main_thread:27.954230
 
 # Modules
-module:name=bf,ver=80001,api=1,filters=0,usedby=[],using=[],options=[]
-module:name=vectorset,ver=1,api=1,filters=0,usedby=[],using=[],options=[handle-io-errors|handle-repl-async-load]
 module:name=timeseries,ver=80001,api=1,filters=0,usedby=[],using=[],options=[]
+module:name=vectorset,ver=1,api=1,filters=0,usedby=[],using=[],options=[handle-io-errors|handle-repl-async-load]
 module:name=search,ver=80001,api=1,filters=0,usedby=[],using=[ReJSON],options=[handle-io-errors]
+module:name=bf,ver=80001,api=1,filters=0,usedby=[],using=[],options=[]
 module:name=ReJSON,ver=80001,api=1,filters=0,usedby=[search],using=[],options=[handle-io-errors]
 
 # Errorstats
@@ -230,7 +230,7 @@ module:name=ReJSON,ver=80001,api=1,filters=0,usedby=[search],using=[],options=[h
 cluster_enabled:0
 
 # Keyspace
-db0:keys=1,expires=1,avg_ttl=5984855,subexpiry=0
+db0:keys=1,expires=1,avg_ttl=1821054,subexpiry=0
 
 # Keysizes
 db0_distrib_strings_sizes:16=1

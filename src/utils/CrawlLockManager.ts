@@ -92,6 +92,7 @@ export default class CrawlerLock extends LockManager {
 
       }
     }
+    console.log(`[CrawlerLock] Overlapping date ranges for ${keyword} between ${start} and ${end}:`, dateOverlaps);
     if (dateOverlaps.length > 0) {
       return dateOverlaps;
     }
