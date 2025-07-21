@@ -77,6 +77,7 @@ export default class LockManager {
   }
   public async getAllLocks(key:String): Promise<string[]> {
     try {
+      console.log(`Fetching all locks for key: ${this.prefixKey}${key}`);
       const keys = await this.redisInstance.keys(`${this.prefixKey}${key}:*`);
       if (keys.length === 0) {
         console.log("No locks found.");

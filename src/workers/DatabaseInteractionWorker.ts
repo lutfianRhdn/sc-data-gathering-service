@@ -85,8 +85,8 @@ export default class DatabaseInteractionWorker implements Worker {
 				const path = destinationSplited[1];
 				const subPath = destinationSplited[2];
 				const result = await this[path]({ id: subPath, data });
-				const { data: res, destination } = result;
 				if (result) {
+					const { data: res, destination } = result;
 					sendMessagetoSupervisor({
 						messageId: message.messageId,
 						status: "completed",
@@ -114,16 +114,17 @@ export default class DatabaseInteractionWorker implements Worker {
 				`[DatabaseInteractionWorker] Successfully inserted ${insertedData.insertedCount}/${data.length} documents`,
 				"success"
 			);
+			return null
 		
-			return {
-				data: {
-					projectId: pId,
-					tweetId: Object.values(insertedData.insertedIds).map(
-						(id) => id.toString()
-					),
-				},
-				destination: [`RabbitMQWorker/produceData/${pId}`],
-			};
+			// return {
+			// 	data: {
+			// 		projectId: pId,
+			// 		tweetId: Object.values(insertedData.insertedIds).map(
+			// 			(id) => id.toString()
+			// 		),
+			// 	},
+			// 	destination: [`RabbitMQWorker/produceData/${pId}`],
+			// };
 		} catch (error) {
 			log(
 				`[DatabaseInteractionWorker] Error creating new data: ${error.message}`,
@@ -145,7 +146,7 @@ export default class DatabaseInteractionWorker implements Worker {
 			}
 			const query: mongoDB.Filter<mongoDB.Document> = {
 				full_text: {
-					$regex: keyword,
+					$regex: keyword.replace(' ', '|'),
 				  $options: "i", // Case-insensitive search
 				},
 				createdAt: {

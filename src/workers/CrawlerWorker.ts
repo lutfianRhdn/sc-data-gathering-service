@@ -65,40 +65,44 @@ export default class CrawlerWorker implements WorkerInterface {
 	async crawling(
 		message:Message
 	) {
-			const { data } = message;
-log(
-	`[CrawlerWorker] Received message: ${message.messageId} with keywords: ${data.keywords}, start date: ${data.start_date}, end date: ${data.end_date}`,
-	"info"
-);
-				const crawled = await this.getTweets({
-					access_token: data.tweetToken,
-					keyword: data.keyword,
-					main_range: {
-						start: data.start_date_crawl,
-						end: data.end_date_crawl,
-					},
-					data: [],
-					splited_range: [],
-				});
-				const regexFilter = new RegExp(data.keyword.replace(' ','|'), 'i');
+		try {
+			
 
-const filteredCrawled = crawled.filter((c: any) =>
-	regexFilter.test(c.full_text)
-);
-				console.log(`[CrawlerWorker] Crawled ${crawled.length} tweets for keyword: ${data.keyword}, filtered to ${filteredCrawled.length} tweets matching the keyword.`);
-				if (crawled.length === 0) {
-					log(
-						`No tweets found for keywords: ${data.keyword}`,
-						"warn"
-					);
-					sendMessagetoSupervisor({
-						messageId: message.messageId as string,
-						status: "completed",
-						reason: "No tweets found",
-						data: [],
-					});
-					return;
-				}
+			const { data } = message;
+			log(
+				`[CrawlerWorker] Received message: ${message.messageId} with keywords: ${data.keywords}, start date: ${data.start_date}, end date: ${data.end_date}`,
+				"info"
+			);
+			const crawled = await this.getTweets({
+				access_token: data.tweetToken,
+				keyword: data.keyword,
+				main_range: {
+					start: data.start_date_crawl,
+					end: data.end_date_crawl,
+				},
+				data: [],
+				splited_range: [],
+			});
+			const regexFilter = new RegExp(data.keyword.replace(' ', '|'), 'i');
+
+			const filteredCrawled = crawled.filter((c: any) =>
+				regexFilter.test(c.full_text)
+			);
+			console.log(`[CrawlerWorker] Filtered crawled tweets for keyword "${data.keyword}": ${filteredCrawled.length} tweets found`)
+			if (crawled.length === 0) {
+				log(
+					`No tweets found for keywords: ${data.keyword}`,
+					"warn"
+				);
+				// 	sendMessagetoSupervisor({
+				// 		messageId: message.messageId as string,
+				// 		status: "completed",
+				// 		reason: "No tweets found",
+				// 		data: [],
+				// 	});
+				// 	return;
+			}
+			if (filteredCrawled.length === 0) {
 				sendMessagetoSupervisor({
 					...message,
 					status: "completed",
@@ -107,7 +111,57 @@ const filteredCrawled = crawled.filter((c: any) =>
 					],
 					data: filteredCrawled,
 				});
-				this.isBusy = false;
+			}
+			const messageId = uuidv4();
+			const { keyword, main_range } = data;
+			setTimeout(() => {
+			
+				sendMessagetoSupervisor({
+					destination: ["DatabaseInteractionWorker/getCrawledData"],
+					messageId: messageId,
+					status: "completed",
+					data: {
+						keyword,
+						start_date: data.start_date_crawl,
+						end_date: data.end_date_crawl,
+					},
+				});
+			}, 5000)
+			this.eventEmitter.on("fetchedData", (message: Message) => {
+				if (
+					message.status === "completed" &&
+					message.messageId === messageId
+				) {
+					const crawledDataFromDatabase = message.data as any[];
+					console.log(`[CrawlerWorker] Fetched ${crawledDataFromDatabase.length} tweets from database for keyword "${data.keyword}"`);
+					const tweetIds = crawledDataFromDatabase.map(
+						(tweet) => tweet._id
+					);
+					sendMessagetoSupervisor({
+						messageId: message.messageId,
+						status: "completed",
+						data: {
+							projectId: data.projectId,
+							keyword: data.keyword,
+							start_date: data.start_date_crawl,
+							end_date: data.end_date_crawl,
+							tweetIds: tweetIds,
+						},
+						destination: [`RabbitMQWorker/produceData/${data.projectId}`],
+					});
+				}
+			});
+			console.log('ok');
+		} catch (error) {
+			log(
+				`[CrawlerWorker] Error in crawling method: ${error.message}`,
+				"error"
+			);
+		} finally {
+		
+			
+			this.isBusy = false;
+		}
 	}
 	async getTweets(
 		param: CrawlParam,
@@ -137,7 +191,6 @@ const filteredCrawled = crawled.filter((c: any) =>
 					}
 				})
 		)) as any[];
-		console.log(`[CrawlerWorker] Fetched crawled data from database for ${keyword}:`, crawledDataFromDatabase.length);
 
 		const crawledDataMapped = crawledDataFromDatabase.map((tweet) => ({
 			created_at: new Date(tweet.createdAt),
@@ -151,9 +204,9 @@ const filteredCrawled = crawled.filter((c: any) =>
 				crawledDataMapped.length - 1
 			]?.created_at)?.toISOString(),
 		};
-		console.log(
-			`[CrawlerWorker] Crawling started for keywords: ${keyword}`
-		);
+		if (crawledRanges&&(crawledRanges.from === param.main_range.start && crawledRanges.to === param.main_range.end)) {
+			return [];
+		}
 
 		// Only check for overlaps and split ranges on the first call (nestedIndex === 0)
 		if (nestedIndex === 0) {
@@ -163,7 +216,6 @@ const filteredCrawled = crawled.filter((c: any) =>
 					main_range.start,
 					main_range.end
 				) || [];
-				console.log(`[CrawlerWorker] Overlap ranges for ${keyword}:`, overlapRanges);
 				if( crawledRanges !== null &&(crawledRanges.from && crawledRanges.to)) overlapRanges.push(crawledRanges);
 				if (overlapRanges && overlapRanges.length > 0) {
 				// Add crawledRanges from database
@@ -181,10 +233,11 @@ const filteredCrawled = crawled.filter((c: any) =>
 						console.warn(
 							`[CrawlerWorker] No valid split ranges found for ${keyword} between ${main_range.start} and ${main_range.end}`
 						);
-						console.log(param.data)
-						return param.data;
+						await new Promise((resolve) => setTimeout(resolve, 5000));
+						return this.getTweets(param, index, nestedIndex );
 					}
 
+					console.log('[CrawlerWorker] Split ranges:', splitRanges);
 				// Convert split ranges to CrawlParam format
 				param.splited_range = splitRanges.map((range) => ({
 					access_token,
@@ -231,7 +284,8 @@ const filteredCrawled = crawled.filter((c: any) =>
 
 		try {
 			// Acquire lock for current range
-			await this.lockManager.aquireLock(lockKey);
+			const aquired = await this.lockManager.aquireLock(lockKey);
+
 
 			console.log(
 				`[CrawlerWorker] Processing range ${nestedIndex + 1}/${
@@ -240,35 +294,35 @@ const filteredCrawled = crawled.filter((c: any) =>
 			);
 
 			// Actual crawling logic (commented out for now)
-			// const crawledData = await crawl({
-			// 	ACCESS_TOKEN: access_token,
-			// 	DEBUG_MODE: false,
-			// 	SEARCH_KEYWORDS: keyword,
-			// 	TARGET_TWEET_COUNT: 500,
-			// 	OUTPUT_FILENAME: `tweets2_${keyword.replace(/\s+/g, "_")}_${
-			// 		currentRange.start
-			// 	}_${currentRange.end}.csv`,
-			// 	DELAY_EACH_TWEET_SECONDS: 3,
-			// 	DELAY_EVERY_100_TWEETS_SECONDS: 30,
-			// 	SEARCH_TAB: "LATEST",
-			// 	CSV_INSERT_MODE: "REPLACE",
-			// 	SEARCH_FROM_DATE: currentRange.start,
-			// 	SEARCH_TO_DATE: currentRange.end,
-			// });
-			const crawledData = {
-				cleanTweets: [
-					{
-						id: "123456789",
-						full_text: `Sample tweet for ${keyword} from ${currentRange.start} to ${currentRange.end}`,
-						created_at: new Date().toISOString(),
-					},
-					{
-						id: "987654321",
-						full_text: `Another sample tweet for ${keyword} from ${currentRange.start} to ${currentRange.end}`,
-						created_at: new Date().toISOString(),
-					},
-				],
-			}
+			const crawledData = await crawl({
+				ACCESS_TOKEN: access_token,
+				DEBUG_MODE: false,
+				SEARCH_KEYWORDS: keyword,
+				TARGET_TWEET_COUNT: 500,
+				OUTPUT_FILENAME: `tweets2_${keyword.replace(/\s+/g, "_")}_${
+					currentRange.start
+				}_${currentRange.end}.csv`,
+				DELAY_EACH_TWEET_SECONDS: 3,
+				DELAY_EVERY_100_TWEETS_SECONDS: 30,
+				SEARCH_TAB: "LATEST",
+				CSV_INSERT_MODE: "REPLACE",
+				SEARCH_FROM_DATE: currentRange.start,
+				SEARCH_TO_DATE: currentRange.end,
+			});
+			// const crawledData = {
+			// 	cleanTweets: [
+			// 		{
+			// 			id: "123456789",
+			// 			full_text: `Sample tweet for ${keyword} from ${currentRange.start} to ${currentRange.end}`,
+			// 			created_at: new Date().toISOString(),
+			// 		},
+			// 		{
+			// 			id: "987654321",
+			// 			full_text: `Another sample tweet for ${keyword} from ${currentRange.start} to ${currentRange.end}`,
+			// 			created_at: new Date().toISOString(),
+			// 		},
+			// 	],
+			// }
 			// Add crawled data to the param.data array
 			param.data.push(...(crawledData?.cleanTweets || []));
 
@@ -281,7 +335,7 @@ const filteredCrawled = crawled.filter((c: any) =>
 			);
 
 			// Release lock after processing
-			// await this.lockManager.releaseLock(lockKey);
+			await this.lockManager.releaseLock(lockKey);
 
 			// Recursive call for next range - pass the updated param with accumulated data
 			return await this.getTweets(param, index, nestedIndex + 1);

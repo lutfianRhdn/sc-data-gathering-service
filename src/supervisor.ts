@@ -38,7 +38,9 @@ export default class Supervisor {
 		this.createWorker({
 			worker: "DatabaseInteractionWorker",
 			count: 1,
-			config: {},
+			config: {
+				
+			},
 			cpu: 1,
 			memory: 1024,
 		});
