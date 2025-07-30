@@ -30,7 +30,7 @@ import {Worker as WorkerInterface} from './Worker'
 import CrawlerLock from "../utils/CrawlLockManager";
 export default class CrawlerWorker implements WorkerInterface {
 	private instanceId: string;
-	public isBusy: boolean = false;
+	static isBusy: boolean = false;
 	public lockManager: CrawlerLock = new CrawlerLock();
 	private eventEmitter: EventEmitter = new EventEmitter();
 
@@ -102,7 +102,7 @@ export default class CrawlerWorker implements WorkerInterface {
 				// 	});
 				// 	return;
 			}
-			if (filteredCrawled.length === 0) {
+			if (filteredCrawled.length !== 0) {
 				sendMessagetoSupervisor({
 					...message,
 					status: "completed",
@@ -145,10 +145,14 @@ export default class CrawlerWorker implements WorkerInterface {
 							keyword: data.keyword,
 							start_date: data.start_date_crawl,
 							end_date: data.end_date_crawl,
-							tweetIds: tweetIds,
+							// tweetIds: tweetIds,
 						},
 						destination: [`RabbitMQWorker/produceData/${data.projectId}`],
 					});
+					CrawlerWorker.isBusy = false;
+					log(
+						`[CrawlerWorker] Successfully processed crawling for keyword "${data.keyword}" with ${crawledDataFromDatabase.length} tweets`,
+						"success")
 				}
 			});
 			console.log('ok');
@@ -160,7 +164,8 @@ export default class CrawlerWorker implements WorkerInterface {
 		} finally {
 		
 			
-			this.isBusy = false;
+			console.log('asdasdasd')
+			CrawlerWorker.isBusy = false;
 		}
 	}
 	async getTweets(
@@ -183,10 +188,12 @@ export default class CrawlerWorker implements WorkerInterface {
 		const crawledDataFromDatabase = (await new Promise(
 			(resolve, reject) =>
 				this.eventEmitter.on("fetchedData", (message: Message) => {
+					log(`[CrawlerWorker] Received message for keyword "${keyword}" with messageId: ${message.messageId}`, "info");
 					if (
 						message.status === "completed" &&
 						messageId == message.messageId
 					) {
+						console.log(`[CrawlerWorker] Fetched ${message.data.length} tweets from database for keyword "${keyword}"`);
 						resolve(message.data);
 					}
 				})
@@ -216,7 +223,11 @@ export default class CrawlerWorker implements WorkerInterface {
 					main_range.start,
 					main_range.end
 				) || [];
-				if( crawledRanges !== null &&(crawledRanges.from && crawledRanges.to)) overlapRanges.push(crawledRanges);
+			if (crawledRanges !== null && (crawledRanges.from && crawledRanges.to)) overlapRanges.push(crawledRanges);
+			console.log(
+				`[CrawlerWorker] Overlapping ranges for ${keyword} between ${main_range.start} and ${main_range.end}:`,
+				overlapRanges
+			);
 				if (overlapRanges && overlapRanges.length > 0) {
 				// Add crawledRanges from database
 
@@ -284,7 +295,7 @@ export default class CrawlerWorker implements WorkerInterface {
 
 		try {
 			// Acquire lock for current range
-			const aquired = await this.lockManager.aquireLock(lockKey);
+			await this.lockManager.aquireLock(lockKey);
 
 
 			console.log(
@@ -294,7 +305,7 @@ export default class CrawlerWorker implements WorkerInterface {
 			);
 
 			// Actual crawling logic (commented out for now)
-			const crawledData = await crawl({
+			const crawledData:any = await crawl({
 				ACCESS_TOKEN: access_token,
 				DEBUG_MODE: false,
 				SEARCH_KEYWORDS: keyword,
@@ -302,37 +313,16 @@ export default class CrawlerWorker implements WorkerInterface {
 				OUTPUT_FILENAME: `tweets2_${keyword.replace(/\s+/g, "_")}_${
 					currentRange.start
 				}_${currentRange.end}.csv`,
-				DELAY_EACH_TWEET_SECONDS: 3,
-				DELAY_EVERY_100_TWEETS_SECONDS: 30,
+				DELAY_EACH_TWEET_SECONDS: 0,
+				DELAY_EVERY_100_TWEETS_SECONDS: 0,
 				SEARCH_TAB: "LATEST",
 				CSV_INSERT_MODE: "REPLACE",
 				SEARCH_FROM_DATE: currentRange.start,
 				SEARCH_TO_DATE: currentRange.end,
-			});
-			// const crawledData = {
-			// 	cleanTweets: [
-			// 		{
-			// 			id: "123456789",
-			// 			full_text: `Sample tweet for ${keyword} from ${currentRange.start} to ${currentRange.end}`,
-			// 			created_at: new Date().toISOString(),
-			// 		},
-			// 		{
-			// 			id: "987654321",
-			// 			full_text: `Another sample tweet for ${keyword} from ${currentRange.start} to ${currentRange.end}`,
-			// 			created_at: new Date().toISOString(),
-			// 		},
-			// 	],
-			// }
+			}); 
+		
 			// Add crawled data to the param.data array
 			param.data.push(...(crawledData?.cleanTweets || []));
-
-			console.log(
-				`[CrawlerWorker] Completed range ${
-					nestedIndex + 1
-				}, collected ${
-					crawledData?.cleanTweets?.length || 0
-				} tweets. Total: ${param.data.length}`
-			);
 
 			// Release lock after processing
 			await this.lockManager.releaseLock(lockKey);
@@ -358,12 +348,22 @@ export default class CrawlerWorker implements WorkerInterface {
 			// Continue with next range even if current one fails
 			return await this.getTweets(param, index, nestedIndex + 1);
 		}
+		finally {
+			await this.lockManager.releaseLock(lockKey);
+			
+		}
 	}
 
 	async listenTask(): Promise<void> {
 		try {
 			process.on("message", async (message: Message) => {
-				if (this.isBusy && message.destination.some((d) => d.includes("CrawlerWorker/crawling"))) {
+				log(`recived menssage, with status Worker ${CrawlerWorker.isBusy}`)
+				if (
+					CrawlerWorker.isBusy &&
+					message.destination.some((d) =>
+						d.includes("CrawlerWorker/crawling")
+					)
+				) {
 					sendMessagetoSupervisor({
 						...message,
 						status: "failed",
@@ -373,7 +373,7 @@ export default class CrawlerWorker implements WorkerInterface {
 					return;
 				}
 				const { destination, data, messageId } = message;
-				this.isBusy = true;
+				CrawlerWorker.isBusy = true;
 					const dest = destination.filter((d) =>
 								d.includes("CrawlerWorker")
 							);
