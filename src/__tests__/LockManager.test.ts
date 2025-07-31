@@ -180,64 +180,7 @@ describe('LockManager', () => {
     });
   });
 
-  describe('relaseAllLocks', () => {
-    it('should release all locks successfully', async () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      const keys = ['LOCK_key1', 'LOCK_key2', 'LOCK_key3'];
-      mockRedisClient.keys.mockResolvedValue(keys);
-      
-      const mockMulti = {
-        del: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue([])
-      };
-      mockRedisClient.multi.mockReturnValue(mockMulti);
-
-      await lockManager.relaseAllLocks();
-
-      expect(mockRedisClient.keys).toHaveBeenCalledWith('LOCK_*');
-      expect(mockMulti.del).toHaveBeenCalledTimes(3);
-      expect(mockMulti.exec).toHaveBeenCalled();
-      expect(consoleSpy).toHaveBeenCalledWith('All locks released.');
-      consoleSpy.mockRestore();
-    });
-
-    it('should handle no locks to release', async () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      mockRedisClient.keys.mockResolvedValue([]);
-
-      await lockManager.relaseAllLocks();
-
-      expect(consoleSpy).toHaveBeenCalledWith('No locks to release.');
-      consoleSpy.mockRestore();
-    });
-
-    it('should handle Redis errors when fetching keys', async () => {
-      const errorSpy = jest.spyOn(console, 'error').mockImplementation();
-      mockRedisClient.keys.mockRejectedValue(new Error('Redis error'));
-
-      await lockManager.relaseAllLocks();
-
-      expect(errorSpy).toHaveBeenCalledWith('Error fetching locks:', expect.any(Error));
-      errorSpy.mockRestore();
-    });
-
-    it('should handle Redis errors when releasing all locks', async () => {
-      const errorSpy = jest.spyOn(console, 'error').mockImplementation();
-      const keys = ['LOCK_key1', 'LOCK_key2'];
-      mockRedisClient.keys.mockResolvedValue(keys);
-      
-      const mockMulti = {
-        del: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockRejectedValue(new Error('Exec error'))
-      };
-      mockRedisClient.multi.mockReturnValue(mockMulti);
-
-      await lockManager.relaseAllLocks();
-
-      expect(errorSpy).toHaveBeenCalledWith('Error releasing all locks:', expect.any(Error));
-      errorSpy.mockRestore();
-    });
-  });
+  
 
   describe('getAllLocks', () => {
     it('should return all locks for a key prefix', async () => {

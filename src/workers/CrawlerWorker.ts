@@ -326,10 +326,18 @@ export default class CrawlerWorker implements WorkerInterface {
 
 			// Release lock after processing
 			await this.lockManager.releaseLock(lockKey);
-
+			console.log(
+				`[CrawlerWorker] Successfully processed range ${nestedIndex + 1}/${
+					param.splited_range.length
+				} for keywords: ${keyword}`
+			);
 			// Recursive call for next range - pass the updated param with accumulated data
-			return await this.getTweets(param, index, nestedIndex + 1);
+			return param.splited_range.length > 0
+				? await this.getTweets(param, index, nestedIndex + 1)
+				: param.data;
+
 		} catch (error) {
+			console.log(param);
 			console.error(
 				`[CrawlerWorker] Error in crawling method for range ${
 					nestedIndex + 1

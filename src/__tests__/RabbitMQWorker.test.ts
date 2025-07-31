@@ -78,7 +78,9 @@ describe('RabbitMQWorker', () => {
       }));
       
       worker = new RabbitMQWorker();
-      expect((worker as any).string_connection).toBe('amqp://admin:admin123@70.153.61.68:5672/dev');
+      expect((worker as any).string_connection).toBe(
+			"amqp://test:test@localhost:5672/test"
+		);
     });
 
     it('should initialize queue names from environment', () => {
