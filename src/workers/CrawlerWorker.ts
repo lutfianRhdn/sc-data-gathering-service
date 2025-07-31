@@ -88,7 +88,7 @@ export default class CrawlerWorker implements WorkerInterface {
 			const filteredCrawled = crawled.filter((c: any) =>
 				regexFilter.test(c.full_text)
 			);
-			console.log(`[CrawlerWorker] Filtered crawled tweets for keyword "${data.keyword}": ${filteredCrawled.length} tweets found`)
+			log(`[CrawlerWorker] Filtered crawled tweets for keyword "${data.keyword}": ${filteredCrawled.length} tweets found`, "info");
 			if (crawled.length === 0) {
 				log(
 					`No tweets found for keywords: ${data.keyword}`,
@@ -133,7 +133,7 @@ export default class CrawlerWorker implements WorkerInterface {
 					message.messageId === messageId
 				) {
 					const crawledDataFromDatabase = message.data as any[];
-					console.log(`[CrawlerWorker] Fetched ${crawledDataFromDatabase.length} tweets from database for keyword "${data.keyword}"`);
+					log(`[CrawlerWorker] Fetched ${crawledDataFromDatabase.length} tweets from database for keyword "${data.keyword}"`, "info");
 					const tweetIds = crawledDataFromDatabase.map(
 						(tweet) => tweet._id
 					);
@@ -155,16 +155,12 @@ export default class CrawlerWorker implements WorkerInterface {
 						"success")
 				}
 			});
-			console.log('ok');
 		} catch (error) {
 			log(
 				`[CrawlerWorker] Error in crawling method: ${error.message}`,
 				"error"
 			);
 		} finally {
-		
-			
-			console.log('asdasdasd')
 			CrawlerWorker.isBusy = false;
 		}
 	}
@@ -193,7 +189,7 @@ export default class CrawlerWorker implements WorkerInterface {
 						message.status === "completed" &&
 						messageId == message.messageId
 					) {
-						console.log(`[CrawlerWorker] Fetched ${message.data.length} tweets from database for keyword "${keyword}"`);
+						log(`[CrawlerWorker] Fetched ${message.data.length} tweets from database for keyword "${keyword}"`, "info");
 						resolve(message.data);
 					}
 				})
@@ -206,12 +202,13 @@ export default class CrawlerWorker implements WorkerInterface {
 			(a, b) => a.created_at.getTime() - b.created_at.getTime()
 		);
 		const crawledRanges = crawledDataMapped.length === 0 ? null : {
-			from:  new Date(crawledDataMapped[0]?.created_at)?.toISOString(),
+			from: new Date(crawledDataMapped[0]?.created_at).toISOString().split('T')[0],
 			to: new Date(crawledDataMapped[
 				crawledDataMapped.length - 1
-			]?.created_at)?.toISOString(),
+			]?.created_at).toISOString().split('T')[0],
 		};
 		if (crawledRanges&&(crawledRanges.from === param.main_range.start && crawledRanges.to === param.main_range.end)) {
+			log(`[CrawlerWorker] Data already crawled for keyword "${keyword}" between ${param.main_range.start} and ${param.main_range.end}`, "info");
 			return [];
 		}
 
@@ -224,15 +221,14 @@ export default class CrawlerWorker implements WorkerInterface {
 					main_range.end
 				) || [];
 			if (crawledRanges !== null && (crawledRanges.from && crawledRanges.to)) overlapRanges.push(crawledRanges);
-			console.log(
+			log(
 				`[CrawlerWorker] Overlapping ranges for ${keyword} between ${main_range.start} and ${main_range.end}:`,
-				overlapRanges
+				"info"
 			);
-				if (overlapRanges && overlapRanges.length > 0) {
-				// Add crawledRanges from database
-
-				console.log(
-					`Found overlapping ranges for ${keyword} between ${main_range.start} and ${main_range.end}`
+			if (overlapRanges && overlapRanges.length > 0) {
+				log(
+					`Found overlapping ranges for ${keyword} between ${main_range.start} and ${main_range.end}`,
+					"info"
 				);
 
 				const splitRanges =
@@ -241,14 +237,15 @@ export default class CrawlerWorker implements WorkerInterface {
 						overlapRanges
 					);
 					if (!splitRanges || splitRanges.length === 0) {
-						console.warn(
-							`[CrawlerWorker] No valid split ranges found for ${keyword} between ${main_range.start} and ${main_range.end}`
+						log(
+							`[CrawlerWorker] No valid split ranges found for ${keyword} between ${main_range.start} and ${main_range.end}`,
+							"warn"
 						);
 						await new Promise((resolve) => setTimeout(resolve, 5000));
 						return this.getTweets(param, index, nestedIndex );
 					}
 
-					console.log('[CrawlerWorker] Split ranges:', splitRanges);
+					log('[CrawlerWorker] Split ranges created successfully', "info");
 				// Convert split ranges to CrawlParam format
 				param.splited_range = splitRanges.map((range) => ({
 					access_token,
@@ -273,16 +270,18 @@ export default class CrawlerWorker implements WorkerInterface {
 
 		// Base case: no more ranges to process
 		if (!param.splited_range || param.splited_range.length === 0) {
-			console.log(
-				`[CrawlerWorker] No valid date ranges found for keywords: ${keyword}`
+			log(
+				`[CrawlerWorker] No valid date ranges found for keywords: ${keyword}`,
+				"info"
 			);
 			return param.data;
 		}
 
 		// Base case: no more ranges at current nested index
 		if (nestedIndex >= param.splited_range.length) {
-			console.log(
-				`[CrawlerWorker] Completed all ranges for keywords: ${keyword}`
+			log(
+				`[CrawlerWorker] Completed all ranges for keywords: ${keyword}`,
+				"info"
 			);
 			return param.data;
 		}
@@ -297,11 +296,11 @@ export default class CrawlerWorker implements WorkerInterface {
 			// Acquire lock for current range
 			await this.lockManager.aquireLock(lockKey);
 
-
-			console.log(
+			log(
 				`[CrawlerWorker] Processing range ${nestedIndex + 1}/${
 					param.splited_range.length
-				}: ${currentRange.start} to ${currentRange.end}`
+				}: ${currentRange.start} to ${currentRange.end}`,
+				"info"
 			);
 
 			// Actual crawling logic (commented out for now)
@@ -326,10 +325,11 @@ export default class CrawlerWorker implements WorkerInterface {
 
 			// Release lock after processing
 			await this.lockManager.releaseLock(lockKey);
-			console.log(
+			log(
 				`[CrawlerWorker] Successfully processed range ${nestedIndex + 1}/${
 					param.splited_range.length
-				} for keywords: ${keyword}`
+				} for keywords: ${keyword}`,
+				"success"
 			);
 			// Recursive call for next range - pass the updated param with accumulated data
 			return param.splited_range.length > 0
@@ -337,28 +337,25 @@ export default class CrawlerWorker implements WorkerInterface {
 				: param.data;
 
 		} catch (error) {
-			console.log(param);
-			console.error(
+			log(
 				`[CrawlerWorker] Error in crawling method for range ${
 					nestedIndex + 1
-				}: ${error.message}`
+				}: ${error.message}`,
+				"error"
 			);
 
 			// Release lock in case of error
 			try {
 				await this.lockManager.releaseLock(lockKey);
 			} catch (unlockError) {
-				console.error(
-					`[CrawlerWorker] Error releasing lock: ${unlockError.message}`
+				log(
+					`[CrawlerWorker] Error releasing lock: ${unlockError.message}`,
+					"error"
 				);
 			}
 
 			// Continue with next range even if current one fails
 			return await this.getTweets(param, index, nestedIndex + 1);
-		}
-		finally {
-			await this.lockManager.releaseLock(lockKey);
-			
 		}
 	}
 
@@ -381,21 +378,25 @@ export default class CrawlerWorker implements WorkerInterface {
 					return;
 				}
 				const { destination, data, messageId } = message;
-				CrawlerWorker.isBusy = true;
-					const dest = destination.filter((d) =>
-								d.includes("CrawlerWorker")
-							);
-							dest.forEach(async (d) => {
-								log(
-									`[CrawlerWorker] Received message for destination: ${d}`,
-									"info"
-								);
-								const destinationSplited = d.split("/");
-								const path = destinationSplited[1];
-								const subPath = destinationSplited[2];
-								await this[path](message);
-							
-							});
+				const dest = destination.filter((d) =>
+					d.includes("CrawlerWorker")
+				);
+				dest.forEach(async (d) => {
+					log(
+						`[CrawlerWorker] Received message for destination: ${d}`,
+						"info"
+					);
+					const destinationSplited = d.split("/");
+					const path = destinationSplited[1];
+					const subPath = destinationSplited[2];
+					
+					// Only set busy for crawling tasks
+					if (path === 'crawling') {
+						CrawlerWorker.isBusy = true;
+					}
+					
+					await this[path](message);
+				});
 
 			});
 		} catch (error) {

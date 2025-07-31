@@ -602,8 +602,7 @@ describe('CrawlerWorker', () => {
         (worker as any).eventEmitter.emit('fetchedData', fetchedDataMessage);
       }, 100);
 
-      // const result = await worker.getTweets(param, 0, 0);
-      const result = worker.getTweets(param);
+      const result = await worker.getTweets(param, 0, 0);
       expect(result).toEqual([]);
     });
   });
