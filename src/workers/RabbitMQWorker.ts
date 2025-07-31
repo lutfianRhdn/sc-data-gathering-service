@@ -228,4 +228,7 @@ export class RabbitMQWorker implements Worker {
 	}
 }
 
-new RabbitMQWorker()
+// Export the class for testing, but don't auto-instantiate during testing
+if (process.env.NODE_ENV !== 'test') {
+  new RabbitMQWorker();
+}

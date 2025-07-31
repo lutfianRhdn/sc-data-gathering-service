@@ -197,4 +197,7 @@ export default class DatabaseInteractionWorker implements Worker {
 	}
 }
 
-new DatabaseInteractionWorker()
+// Export the class for testing, but don't auto-instantiate during testing
+if (process.env.NODE_ENV !== 'test') {
+  new DatabaseInteractionWorker();
+}

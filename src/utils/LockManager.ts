@@ -20,9 +20,9 @@ export default class LockManager {
       });
     }
   }
-  public aquireLock(key: string): void {
+  public aquireLock(key: string): Promise<void> {
     const now = Date.now();
-    this.redisInstance.set(this.prefixKey+key, JSON.stringify({ timestamp: now }), {
+    return this.redisInstance.set(this.prefixKey+key, JSON.stringify({ timestamp: now }), {
       NX: true,
       EX: 60*100 // Lock expires after 60 seconds
     }).then((result) => {
@@ -36,8 +36,8 @@ export default class LockManager {
     });
 
   }
-  public releaseLock(key: string): void {
-    this.redisInstance.del(this.prefixKey+key).then((result) => {
+  public releaseLock(key: string): Promise<void> {
+    return this.redisInstance.del(this.prefixKey+key).then((result) => {
       if (result === 1) {
         console.log(`Lock for ${key} released.`);
       } else {
