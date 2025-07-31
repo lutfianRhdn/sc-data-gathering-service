@@ -381,22 +381,36 @@ export default class CrawlerWorker implements WorkerInterface {
 				const dest = destination.filter((d) =>
 					d.includes("CrawlerWorker")
 				);
-				dest.forEach(async (d) => {
-					log(
-						`[CrawlerWorker] Received message for destination: ${d}`,
-						"info"
-					);
-					const destinationSplited = d.split("/");
-					const path = destinationSplited[1];
-					const subPath = destinationSplited[2];
-					
-					// Only set busy for crawling tasks
-					if (path === 'crawling') {
-						CrawlerWorker.isBusy = true;
+				
+				for (const d of dest) {
+					try {
+						log(
+							`[CrawlerWorker] Received message for destination: ${d}`,
+							"info"
+						);
+						const destinationSplited = d.split("/");
+						const path = destinationSplited[1];
+						const subPath = destinationSplited[2];
+						
+						// Only set busy for crawling tasks
+						if (path === 'crawling') {
+							CrawlerWorker.isBusy = true;
+						}
+						
+						await this[path](message);
+					} catch (error) {
+						log(
+							`[CrawlerWorker] Error processing destination ${d}: ${error.message}`,
+							"error"
+						);
+						sendMessagetoSupervisor({
+							messageId: "error",
+							status: "error",
+							reason: error.message,
+							data: [],
+						});
 					}
-					
-					await this[path](message);
-				});
+				}
 
 			});
 		} catch (error) {

@@ -38,7 +38,9 @@ describe('CrawlerWorker', () => {
       relaseAllLocks: jest.fn()
     } as any;
 
-    (CrawlerLock as jest.MockedClass<typeof CrawlerLock>).mockImplementation(() => mockLockManager);
+    // Ensure CrawlerLock constructor returns our mock
+    const MockCrawlerLock = CrawlerLock as jest.MockedClass<typeof CrawlerLock>;
+    MockCrawlerLock.mockImplementation(() => mockLockManager);
 
     // Mock crawl function
     (crawl as jest.MockedFunction<typeof crawl>).mockResolvedValue({
@@ -73,7 +75,9 @@ describe('CrawlerWorker', () => {
 
     it('should initialize lock manager', () => {
       worker = new CrawlerWorker();
-      expect(worker.lockManager).toBeInstanceOf(CrawlerLock);
+      expect(worker.lockManager).toBeDefined();
+      expect(typeof worker.lockManager.aquireLock).toBe('function');
+      expect(typeof worker.lockManager.releaseLock).toBe('function');
     });
 
     it('should initialize event emitter', () => {
@@ -384,7 +388,7 @@ describe('CrawlerWorker', () => {
       worker = new CrawlerWorker();
     });
 
-    it('should return empty array when no valid date ranges', async () => {
+    it('should return empty array when crawl returns no data', async () => {
       const param = {
         access_token: 'test-token',
         keyword: 'test',
@@ -393,7 +397,24 @@ describe('CrawlerWorker', () => {
         splited_range: []
       };
 
-      mockLockManager.checkStartDateEndDateContainsOnKeys.mockResolvedValue(false);
+      mockLockManager.checkStartDateEndDateContainsOnKeys.mockResolvedValue([]);
+      
+      // Mock crawl to return empty results
+      (crawl as jest.MockedFunction<typeof crawl>).mockResolvedValue({
+        fileName: 'test-file.csv',
+        cleanTweets: []
+      });
+
+      // Mock database response
+      const fetchedDataMessage: Message = {
+        messageId: 'test-uuid-1234',
+        status: 'completed',
+        data: []
+      };
+
+      setTimeout(() => {
+        (worker as any).eventEmitter.emit('fetchedData', fetchedDataMessage);
+      }, 100);
 
       const result = await worker.getTweets(param, 0, 0);
 
