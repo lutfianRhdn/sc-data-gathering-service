@@ -33,6 +33,7 @@ export default class CrawlerWorker implements WorkerInterface {
 	static isBusy: boolean = false;
 	public lockManager: CrawlerLock = new CrawlerLock();
 	private eventEmitter: EventEmitter = new EventEmitter();
+	private healthCheckInterval?: NodeJS.Timeout;
 
 	constructor() {
 		this.instanceId = `CrawlerWorker-${uuidv4()}`;
@@ -48,7 +49,7 @@ export default class CrawlerWorker implements WorkerInterface {
 		this.eventEmitter.emit("fetchedData", message);
 	}
 	healthCheck(): void {
-		setInterval(
+		this.healthCheckInterval = setInterval(
 			() =>
 				sendMessagetoSupervisor({
 					messageId: uuidv4(),
@@ -60,6 +61,15 @@ export default class CrawlerWorker implements WorkerInterface {
 				}),
 			10000
 		);
+	}
+
+	cleanup(): void {
+		if (this.healthCheckInterval) {
+			clearInterval(this.healthCheckInterval);
+			this.healthCheckInterval = undefined;
+		}
+		this.eventEmitter.removeAllListeners();
+		CrawlerWorker.isBusy = false;
 	}
 
 	async crawling(

@@ -68,8 +68,8 @@ describe('CrawlerWorker', () => {
     jest.clearAllTimers();
     
     // Clean up worker instance if it exists
-    if (worker && (worker as any).eventEmitter) {
-      (worker as any).eventEmitter.removeAllListeners();
+    if (worker && typeof worker.cleanup === 'function') {
+      worker.cleanup();
     }
     
     // Reset static state
