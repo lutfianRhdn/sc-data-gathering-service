@@ -22,7 +22,9 @@ export class RabbitMQWorker implements Worker {
 
 	constructor() {
 		this.instanceId = `RabbitMqWorker-${uuidv4()}`;
-		this.string_connection = process.env.rabbitMqUrl || RABBITMQ_URL;
+		this.string_connection =
+			RABBITMQ_URL ||
+			"amqp://admin:admin123@70.153.61.68:5672/dev";
 		this.run().catch((error) => {
 			log(
 				`[RabbitMQWorker] Error in run method: ${error.message}`,

@@ -38,8 +38,10 @@
 		"papaparse": "^5.4.1",
 		"playwright-extra": "^4.3.6",
 		"prompts": "^2.4.2",
+		"ps-list": "^8.1.1",
 		"puppeteer-extra-plugin-stealth": "^2.11.2",
 		"redis": "^5.6.0",
+		"tasklist": "^5.0.0",
 		"uuid": "^11.1.0",
 		"yargs": "^17.7.2",
 		"znv": "^0.3.2",
@@ -66,7 +68,6 @@
 		"postinstall": "npx playwright install chromium",
 		"start": "node ./dist/index.js",
 		"start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
-		"amq": "ts-node-dev --respawn --transpile-only src/amq.ts",
 		"crawl-dev": "npx tsx src/dev.ts",
 		"build": "tsc",
 		"prepublish": "pnpm build"

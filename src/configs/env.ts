@@ -10,11 +10,4 @@ export const {
   DATABASE_COLLECTION,
   RABBITMQ_URL,
 	DATABASE_NAME,
-} = parseEnv(process.env, {
-	HEADLESS_MODE: z.boolean().default(true),
-	ENABLE_EXPONENTIAL_BACKOFF: z.boolean().default(false),
-	DATABASE_URL: z.string().min(1),
-	DATABASE_NAME: z.string().min(1),
-	DATABASE_COLLECTION: z.string().min(1),
-	RABBITMQ_URL: z.string().min(1),
-});
+} = process.env;

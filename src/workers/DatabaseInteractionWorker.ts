@@ -3,6 +3,7 @@ import log from "../utils/log";
 import { DATABASE_COLLECTION,DATABASE_NAME, DATABASE_URL } from "../configs/env";
 import { Message, sendMessagetoSupervisor } from "../utils/handleMessage";
 import { Worker } from "./Worker";
+console.log(DATABASE_URL, DATABASE_NAME, DATABASE_COLLECTION);
 export default class DatabaseInteractionWorker implements Worker {
 	private instanceId: string;
 	public isBusy: boolean = false;
@@ -109,7 +110,18 @@ export default class DatabaseInteractionWorker implements Worker {
 				);
 				return;
 			}
-			const insertedData = await this.collection.insertMany(data);
+			console.log(data)
+			// insert many data with ignored duplicated full_text
+
+			const insertedData = await this.collection.insertMany(data, {
+				ordered: false,
+				// ignore duplicate full_text
+				writeConcern: {
+					w: "majority",
+					journal: true,
+				},
+			});
+
 			log(
 				`[DatabaseInteractionWorker] Successfully inserted ${insertedData.insertedCount}/${data.length} documents`,
 				"success"

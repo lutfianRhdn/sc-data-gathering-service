@@ -5,7 +5,8 @@ import { Message } from "./utils/handleMessage";
 import { workerConfig } from "./configs/worker";
 import { Timestamp } from "mongodb";
 import { RABBITMQ_URL } from "./configs/env";
-
+import {tasklist} from "tasklist";
+import psList from "ps-list";
 interface WorkerHealthInterFace {
 	isHealthy: boolean;
 	workerNameId: string;
@@ -39,7 +40,7 @@ export default class Supervisor {
 			worker: "DatabaseInteractionWorker",
 			count: 1,
 			config: {
-				
+
 			},
 			cpu: 1,
 			memory: 1024,
@@ -59,7 +60,7 @@ export default class Supervisor {
 			cpu: 1,
 			memory: 1024,
 		});
-		setInterval(() => this.checkWorkerHealth(), 10000); // Check worker health every 10 seconds
+		// setInterval(() => this.checkWorkerHealth(), 10000); // Check worker health every 10 seconds
 		log("[Supervisor] Supervisor initialized");
 	}
 
@@ -112,6 +113,7 @@ export default class Supervisor {
 					`[Supervisor] Worker exited. PID: ${runningWorker.pid}`,
 					"warn"
 				);
+				this.createWorker({worker:worker, count:1, config, cpu, memory});
 			});
 
 			runningWorker.on("message", (message: any) =>
@@ -133,32 +135,6 @@ export default class Supervisor {
 		this.resendPendingMessages(worker);
 	}
 
-	checkWorkerHealth(): void {
-		const currentTime = Math.floor(Date.now() / 1000);
-		const healthThreshold = 10;
-		for (const [pid, health] of Object.entries(this.workersHealth)) {
-			if (
-				health.isHealthy &&
-				currentTime - health.timestamp.t > healthThreshold
-			) {
-				log(
-					`[Supervisor] Worker ${pid} is not healthy anymore, restarting...`,
-					"warn"
-				);
-				const workerName = health.workerNameId.split("-")[0];
-				this.workers.find((w) => w.pid === parseInt(pid))?.kill();
-
-				this.createWorker({
-					worker: workerName,
-					...workerConfig[workerName],
-				});
-				delete this.workersHealth[pid];
-				this.workers = this.workers.filter(
-					(w) => w.pid !== parseInt(pid)
-				);
-			}
-		}
-	}
 
 	handleWorkerMessage(message: Message, processId: number): void {
 		const { messageId, reason, status, destination } = message;
@@ -204,14 +180,16 @@ export default class Supervisor {
 			);
 
 			let availableWorkers = this.workers.filter((worker) => {
-				const usSameWorkerName= worker.spawnargs.some((args) => args.includes(workerName)) 
+				const usSameWorkerName = worker.spawnargs.some((args) =>
+					args.includes(workerName)
+				);
 				const isAlive = this.isWorkerAlive(worker);
-				const isReady = execSync(
-					`ps -o state= -p ${worker.pid}`
-				).toString().trim() === "R";
+				const isReady =
+					execSync(`ps -o state= -p ${worker.pid}`)
+						.toString()
+						.trim() === "R";
 				return usSameWorkerName && isAlive && !isReady;
-			}
-			);
+			});
 			// Track message sebelum dikirim
 			this.trackPendingMessage(workerName, message);
 
@@ -246,7 +224,7 @@ export default class Supervisor {
 
 			if (status === "failed" && reason === "SERVER_BUSY") {
 				availableWorkers = availableWorkers.filter(
-					(worker) => worker.pid !== processId 
+					(worker) => worker.pid !== processId
 				);
 			}
 

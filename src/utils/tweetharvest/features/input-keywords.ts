@@ -5,9 +5,11 @@ export const inputKeywords = async (
   page: Page,
   { SEARCH_FROM_DATE, SEARCH_TO_DATE, SEARCH_KEYWORDS, MODIFIED_SEARCH_KEYWORDS }
 ) => {
+  try{
   // wait until it shown: input[name="allOfTheseWords"]
   await page.waitForSelector('input[name="allOfTheseWords"]', {
     state: "visible",
+    timeout: 1000000000000,
   });
 
   await page.click('input[name="allOfTheseWords"]');
@@ -25,5 +27,10 @@ export const inputKeywords = async (
   await page.fill('input[name="allOfTheseWords"]', MODIFIED_SEARCH_KEYWORDS);
 
   // Press Enter
-  await page.press('input[name="allOfTheseWords"]', "Enter");
+    await page.press('input[name="allOfTheseWords"]', "Enter");
+  } catch (error) {
+    console.error(chalk.red(`Error while inputting keywords: ${error.message}`));
+    return  new Error(`Failed to input keywords: ${error.message}`);
+  }
+  
 };

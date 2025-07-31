@@ -30,7 +30,7 @@ export const scrollDown = async (page: Page): Promise<void> => {
 };
 
 export const logError = (message: string): void => {
-  const appVersion = require("../../package.json").version;
+  const appVersion = require("../../../../package.json").version;
   const messageWithVersion = `${chalk.gray(`[v${appVersion}]`)} ${message}`;
   console.error(messageWithVersion);
 };

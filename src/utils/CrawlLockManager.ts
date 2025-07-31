@@ -131,7 +131,11 @@ export default class CrawlerLock extends LockManager {
 			end: ranges.end,
 		};
 		const data = keys;
-
+		console.log(
+			`[CrawlerLock] Splitting and removing overlapping ranges for request: ${JSON.stringify(
+				request
+			)} with data: ${JSON.stringify(data)}`
+		);
 		const getPreviousDay = (date: string): string => {
 			const d = new Date(date);
 			d.setDate(d.getDate() - 1);
@@ -154,6 +158,11 @@ export default class CrawlerLock extends LockManager {
 		// Sort data by start date (normalize for proper comparison)
 		const sortedData = data.sort((a, b) =>
 			normalizeDate(a.from).localeCompare(normalizeDate(b.from))
+		);
+		console.log(
+			`[CrawlerLock] Sorted data for splitting: ${JSON.stringify(
+				sortedData
+			)}`
 		);
 
 		for (const range of sortedData) {
