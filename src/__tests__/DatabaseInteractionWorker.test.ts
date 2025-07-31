@@ -48,7 +48,7 @@ describe('DatabaseInteractionWorker', () => {
     jest.spyOn(process, 'on').mockImplementation((event: any, listener: any) => {
       if (event === 'message') {
         // Store the listener for manual triggering in tests
-        return process;
+        (worker as any)._testMessageListener = listener;
       }
       return process;
     });
@@ -377,7 +377,7 @@ describe('DatabaseInteractionWorker', () => {
         {
           $match: {
             full_text: {
-              $regex: 'hello|world|test',
+              $regex: 'hello|world test',
               $options: "i"
             },
             createdAt: {

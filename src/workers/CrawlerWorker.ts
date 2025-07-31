@@ -419,4 +419,7 @@ export default class CrawlerWorker implements WorkerInterface {
 		this.healthCheck();
 	}
 }
-new CrawlerWorker();
+// Export the class for testing, but don't auto-instantiate during testing
+if (process.env.NODE_ENV !== 'test') {
+  new CrawlerWorker();
+}
