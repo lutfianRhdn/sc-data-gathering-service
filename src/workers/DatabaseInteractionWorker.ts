@@ -3,7 +3,6 @@ import log from "../utils/log";
 import { DATABASE_COLLECTION,DATABASE_NAME, DATABASE_URL } from "../configs/env";
 import { Message, sendMessagetoSupervisor } from "../utils/handleMessage";
 import { Worker } from "./Worker";
-console.log(DATABASE_URL, DATABASE_NAME, DATABASE_COLLECTION);
 export default class DatabaseInteractionWorker implements Worker {
 	private instanceId: string;
 	public isBusy: boolean = false;

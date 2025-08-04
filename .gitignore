@@ -5,7 +5,4 @@ dist
 tweets-data
 
 tweet_data
-.env
-
-# Test coverage
 coverage/

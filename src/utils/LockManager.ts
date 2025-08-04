@@ -4,11 +4,13 @@ export default class LockManager {
   private prefixKey: string = "LOCK_";
   constructor() {
     this.redisInstance = createClient({
-		username: "default",
-		password: "ZwvQ63UoMnX3TvNGewgyCGCpejC0dqzA",
+		username: process.env.REDIS_USERNAME || "default",
+		password: process.env.REDIS_PASSWORD || "default",
 		socket: {
-			host: "redis-13541.c54.ap-northeast-1-2.ec2.redns.redis-cloud.com",
-			port: 13541,
+			host: process.env.REDIS_URL || "localhost",
+			port: process.env.REIDS_PORT
+				? parseInt(process.env.REIDS_PORT)
+				: 6379,
 		},
     });
     this.redisInstance.on("error", (err) => {

@@ -17,8 +17,6 @@ interface CreateWorkerOptions {
 	worker: string;
 	count: number;
 	config: any;
-	cpu: any;
-	memory: any;
 }
 
 type PendingMessage = Message & { timestamp: number };
@@ -31,34 +29,19 @@ export default class Supervisor {
 	constructor() {
 		this.createWorker({
 			worker: "CrawlerWorker",
-			count: 1,
-			config: {},
-			cpu: 1,
-			memory: 1024
+			count: workerConfig['CrawlerWorker'].count,
+			config: workerConfig['CrawlerWorker'].config,
 		});
 		this.createWorker({
 			worker: "DatabaseInteractionWorker",
-			count: 1,
-			config: {
-
-			},
-			cpu: 1,
-			memory: 1024,
+			count: workerConfig['DatabaseInteractionWorker'].count,
+			config: workerConfig['DatabaseInteractionWorker'].config,
 		});
 
 		this.createWorker({
 			worker: "RabbitMQWorker",
-			count: 1,
-			config: {
-				consumeQueue: "projectQueue",
-				consumeCompensationQueue: "projectCompensationQueueue",
-				produceQueue: "dataGatheringQueue",
-				produceCompensationQueue:
-					"dataGatheringCompensationQueueue",
-				rabbitMqUrl: RABBITMQ_URL,
-			},
-			cpu: 1,
-			memory: 1024,
+			count: workerConfig['RabbitMQWorker'].count,
+			config: workerConfig['RabbitMQWorker'].config,
 		});
 		// setInterval(() => this.checkWorkerHealth(), 10000); // Check worker health every 10 seconds
 		log("[Supervisor] Supervisor initialized");
@@ -68,8 +51,6 @@ export default class Supervisor {
 		worker,
 		count,
 		config,
-		cpu,
-		memory,
 	}: CreateWorkerOptions): void {
 		if (count <= 0) {
 			log(
@@ -113,7 +94,7 @@ export default class Supervisor {
 					`[Supervisor] Worker exited. PID: ${runningWorker.pid}`,
 					"warn"
 				);
-				this.createWorker({worker:worker, count:1, config, cpu, memory});
+				this.createWorker({worker:worker, count:count, config});
 			});
 
 			runningWorker.on("message", (message: any) =>
