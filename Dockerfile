@@ -1,5 +1,5 @@
 # Use Node.js as the base image
-FROM node:22
+FROM node:20
 
 # Set working directory inside the container
 WORKDIR /usr/src/app
@@ -34,7 +34,5 @@ RUN pnpm install
 # Copy the rest of the application files to the working directory
 COPY . .
 
-# Expose the port that the application will use
-EXPOSE 5000
 
 CMD ["npm", "run", "start:dev"]
