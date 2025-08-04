@@ -1,0 +1,49 @@
+name: Trigger auto deployment for data-gathering-service
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ main ]
+    paths:
+    - '**'
+    - '.github/workflows/data-gathering-service-AutoDeployTrigger-ead36aa5-18f8-4e40-b7ba-756e615b8566.yml'
+
+  # Allow manual trigger 
+  workflow_dispatch:      
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions: 
+      id-token: write #This is required for requesting the OIDC JWT Token
+      contents: read #Required when GH token is used to authenticate with private repo
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.DATAGATHERINGSERVICE_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.DATAGATHERINGSERVICE_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.DATAGATHERINGSERVICE_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}
+          _dockerfilePathKey_: _dockerfilePath_
+          _targetLabelKey_: _targetLabel_
+          registryUrl: socialabsservice.azurecr.io
+          registryUsername: ${{ secrets.DATAGATHERINGSERVICE_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.DATAGATHERINGSERVICE_REGISTRY_PASSWORD }}
+          containerAppName: data-gathering-service
+          resourceGroup: socialabs_service
+          imageToBuild: socialabsservice.azurecr.io/data-gathering-service:${{ github.sha }}
+          _buildArgumentsKey_: |
+            _buildArgumentsValues_
+
+
