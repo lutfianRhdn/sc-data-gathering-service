@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y \
   libxkbcommon0 \
   libasound2
 
+RUN npm install -g node-ts
 # Install pnpm
 RUN npm install -g pnpm
 
@@ -35,4 +36,4 @@ RUN pnpm install
 COPY . .
 
 
-CMD ["npm", "run", "start:dev"]
+CMD ["npm", "run", "start:prod"]

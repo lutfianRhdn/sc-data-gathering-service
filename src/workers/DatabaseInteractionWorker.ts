@@ -19,10 +19,8 @@ export default class DatabaseInteractionWorker implements Worker {
 			console.error(
 				`[DatabaseInteractionWorker] Error in constructor: ${error.message}`
 			);
+			process.exit(1); // Exit the process if initialization fails
 		});
-	}
-	healthCheck(): void {
-		throw new Error("Method not implemented.");
 	}
 	public getInstanceId(): string {
 		return this.instanceId;

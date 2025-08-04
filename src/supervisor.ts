@@ -7,11 +7,6 @@ import { Timestamp } from "mongodb";
 import { RABBITMQ_URL } from "./configs/env";
 import {tasklist} from "tasklist";
 import psList from "ps-list";
-interface WorkerHealthInterFace {
-	isHealthy: boolean;
-	workerNameId: string;
-	timestamp: Timestamp;
-}
 
 interface CreateWorkerOptions {
 	worker: string;
@@ -23,7 +18,6 @@ type PendingMessage = Message & { timestamp: number };
 
 export default class Supervisor {
 	private workers: ChildProcess[] = [];
-	private workersHealth: Record<number, WorkerHealthInterFace> = {};
 	private pendingMessages: Record<string, PendingMessage[]> = {};
 
 	constructor() {
@@ -89,12 +83,12 @@ export default class Supervisor {
 			runningWorker.on("exit", () => {
 				this.workers = this.workers.filter(
 					(w) => w.pid !== runningWorker.pid
-				);
+				); 
 				log(
 					`[Supervisor] Worker exited. PID: ${runningWorker.pid}`,
 					"warn"
 				);
-				this.createWorker({worker:worker, count:count, config});
+				this.createWorker({worker:worker, count:1, config});
 			});
 
 			runningWorker.on("message", (message: any) =>
@@ -126,18 +120,7 @@ export default class Supervisor {
 				this.handleSendMessageWorker(processId, message);
 				return;
 			}
-			// Bisa tambahkan logic khusus supervisor di sini kalau ada
-			if (status === "healthy") {
-				this.workersHealth[processId] = {
-					isHealthy: true,
-					workerNameId: message.data.instanceId,
-					timestamp: new Timestamp({
-						t: Math.floor(Date.now() / 1000),
-						i: 0,
-					}),
-				};
-			}
-
+			
 			// Jika pesan status "completed", hapus dari pending
 			if (status === "completed" && destination) {
 				const workerName =

@@ -141,6 +141,7 @@ export class RabbitMQWorker implements Worker {
 					} else if (
 						queueName === this.consumeCompensationQueue
 					) {
+						this.produceMessage(this.produceCompensationQueue, messageContent);
 						// sendMessagetoSupervisor({
 						// 	messageId: uuidv4(),
 						// 	status: "error",
