@@ -19,6 +19,7 @@ type PendingMessage = Message & { timestamp: number };
 export default class Supervisor {
 	private workers: ChildProcess[] = [];
 	private pendingMessages: Record<string, PendingMessage[]> = {};
+  private successCount: Record<string, number> = {};
 
 	constructor() {
 		this.createWorker({
@@ -126,6 +127,9 @@ export default class Supervisor {
 				const workerName =
 					dest.split("/")?.[0]?.split(".")?.[0] ?? "";
 				this.removePendingMessage(workerName, messageId);
+				this.incrementSuccessCount(workerName);
+				if(workerName =="CrawlerWorker")log(`[Supervisor] Message ${messageId} completed by ${workerName}. Total completed: ${this.successCount[workerName]}`, "info");
+
 			}
 		});
 	}
@@ -148,11 +152,12 @@ export default class Supervisor {
 					args.includes(workerName)
 				);
 				const isAlive = this.isWorkerAlive(worker);
-				const isReady =
-					execSync(`ps -o state= -p ${worker.pid}`)
-						.toString()
-						.trim() === "R";
-				return usSameWorkerName && isAlive && !isReady;
+
+				// const isReady =
+				// 	execSync(`ps -o state= -p ${worker.pid}`)
+				// 		.toString()
+				// 		.trim() === "R";
+				return usSameWorkerName && isAlive;
 			});
 			// Track message sebelum dikirim
 			this.trackPendingMessage(workerName, message);
@@ -203,7 +208,7 @@ export default class Supervisor {
 						{ ...message, status: "completed" },
 						processId
 					);
-				}, 5000);
+				}, 30000);
 				return;
 			}
 
@@ -253,6 +258,12 @@ export default class Supervisor {
 	// =========================
 	// TRACKING LOGIC
 	// =========================
+	private incrementSuccessCount(workerName: string) {
+		if (!this.successCount[workerName]) {
+			this.successCount[workerName] = 0;
+		}
+		this.successCount[workerName]++;
+	}
 
 	private trackPendingMessage(workerName: string, message: Message) {
 		if (!workerName) return;

@@ -1,15 +1,16 @@
 import { createClient } from "redis";
+console.log(process.env)
 export default class LockManager {
   private redisInstance: ReturnType<typeof createClient>;
   private prefixKey: string = "LOCK_";
   constructor() {
     this.redisInstance = createClient({
-		username: process.env.REDIS_USERNAME || "default",
-		password: process.env.REDIS_PASSWORD || "default",
+		username: process.env.redisUsername ||process.env.REDIS_USERNAME || "default",
+		password: process.env.redisPassword ||process.env.REDIS_PASSWORD || "default",
 		socket: {
-			host: process.env.REDIS_URL || "localhost",
-			port: process.env.REIDS_PORT
-				? parseInt(process.env.REIDS_PORT)
+			host: process.env.redisHost ||process.env.REDIS_URL || "localhost",
+			port: process.env.redisPort ||process.env.REDIS_PORT
+				? parseInt(process.env.redisPort ||process.env.REDIS_PORT)
 				: 6379,
 		},
     });

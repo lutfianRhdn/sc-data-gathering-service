@@ -104,13 +104,7 @@ export default class CrawlerWorker implements WorkerInterface {
 					`No tweets found for keywords: ${data.keyword}`,
 					"warn"
 				);
-				// 	sendMessagetoSupervisor({
-				// 		messageId: message.messageId as string,
-				// 		status: "completed",
-				// 		reason: "No tweets found",
-				// 		data: [],
-				// 	});
-				// 	return;
+			
 			}
 			if (filteredCrawled.length !== 0) {
 				sendMessagetoSupervisor({
@@ -147,11 +141,21 @@ export default class CrawlerWorker implements WorkerInterface {
 					const tweetIds = crawledDataFromDatabase.map(
 						(tweet) => tweet._id
 					);
+					if (crawledDataFromDatabase.length === 0) {
+						
+						sendMessagetoSupervisor({
+							messageId: message.messageId as string,
+							status: "failed",
+							reason: "No tweets found",
+							data: [],
+						});
+						return;
+					}
 					sendMessagetoSupervisor({
 						messageId: message.messageId,
 						status: "completed",
 						data: {
-							projectId: data.projectId,
+							project_id: data.projectId,
 							keyword: data.keyword,
 							start_date: data.start_date_crawl,
 							end_date: data.end_date_crawl,
@@ -314,21 +318,22 @@ export default class CrawlerWorker implements WorkerInterface {
 			);
 
 			// Actual crawling logic (commented out for now)
-			const crawledData:any = await crawl({
-				ACCESS_TOKEN: access_token,
-				DEBUG_MODE: false,
-				SEARCH_KEYWORDS: keyword,
-				TARGET_TWEET_COUNT: 500,
-				OUTPUT_FILENAME: `tweets2_${keyword.replace(/\s+/g, "_")}_${
-					currentRange.start
-				}_${currentRange.end}.csv`,
-				DELAY_EACH_TWEET_SECONDS: 0,
-				DELAY_EVERY_100_TWEETS_SECONDS: 0,
-				SEARCH_TAB: "LATEST",
-				CSV_INSERT_MODE: "REPLACE",
-				SEARCH_FROM_DATE: currentRange.start,
-				SEARCH_TO_DATE: currentRange.end,
-			}); 
+			 const crawledData:any = await crawl({
+			 	ACCESS_TOKEN: access_token,
+			 	DEBUG_MODE: false,
+			 	SEARCH_KEYWORDS: keyword,
+			 	TARGET_TWEET_COUNT: 500,
+			 	OUTPUT_FILENAME: `tweets2_${keyword.replace(/\s+/g, "_")}_${
+		 		currentRange.start
+			 	}_${currentRange.end}.csv`,
+			 	DELAY_EACH_TWEET_SECONDS: 0,
+			 	DELAY_EVERY_100_TWEETS_SECONDS: 0,
+			 	SEARCH_TAB: "LATEST",
+			 	CSV_INSERT_MODE: "REPLACE",
+			 	SEARCH_FROM_DATE: currentRange.start,
+			 	SEARCH_TO_DATE: currentRange.end,
+			 }); 
+			// const crawledData ={cleanTweets:[]}
 		
 			// Add crawled data to the param.data array
 			param.data.push(...(crawledData?.cleanTweets || []));
