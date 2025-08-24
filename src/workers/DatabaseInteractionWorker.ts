@@ -27,13 +27,20 @@ export default class DatabaseInteractionWorker implements Worker {
 	}
 	public async run(): Promise<void> {
 		try {
+			log(`[DatabaseInteractionWorker] Starting worker`, "info");
+			log(
+				`[DatabaseInteractionWorker] connecting to MongoDB at ${DATABASE_URL} with database ${DATABASE_NAME} and collection ${DATABASE_COLLECTION}`,
+				"info"
+			);
 			this.client
 				.connect()
-				.then(() =>
+				.then(() =>{
 					log(
 						"[DatabaseInteractionWorker] Connected to MongoDB",
 						"success"
 					)
+					log(`[DatabaseInteractionWorker] Using collection: ${DATABASE_COLLECTION}`, 'info')
+				}
 				)
 				.catch((error) =>
 					log(
@@ -182,7 +189,7 @@ export default class DatabaseInteractionWorker implements Worker {
 			);
 
 			return {
-				data: crawledData,
+				data: crawledData ||[],
 				destination: [`CrawlerWorker/onFechedData`],
 			};
 		} catch (error) {

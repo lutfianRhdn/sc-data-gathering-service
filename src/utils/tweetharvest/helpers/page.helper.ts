@@ -4,7 +4,7 @@ import chalk from "chalk";
 export const scrollUp = async (page: Page): Promise<void> => {
   await page.evaluate(() =>
     window.scrollTo({
-      behavior: "smooth",
+      behavior: "auto",
       top: 0,
     })
   );

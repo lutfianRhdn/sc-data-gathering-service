@@ -9,7 +9,7 @@ export const inputKeywords = async (
   // wait until it shown: input[name="allOfTheseWords"]
   await page.waitForSelector('input[name="allOfTheseWords"]', {
     state: "visible",
-    timeout: 1000000000000,
+    timeout: 0,
   });
 
   await page.click('input[name="allOfTheseWords"]');

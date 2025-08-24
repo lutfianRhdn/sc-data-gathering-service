@@ -85,7 +85,7 @@ export default class CrawlerWorker implements WorkerInterface {
 			);
 			const crawled = await this.getTweets({
 				access_token: data.tweetToken,
-				keyword: data.keyword,
+				keyword: `${data.keyword}`,
 				main_range: {
 					start: data.start_date_crawl,
 					end: data.end_date_crawl,
@@ -93,9 +93,13 @@ export default class CrawlerWorker implements WorkerInterface {
 				data: [],
 				splited_range: [],
 			});
+			// remove duplicated data 
+			const uniqueCrawled = Array.from(
+				new Set(crawled.map((tweet) => JSON.stringify(tweet)))
+			).map((tweet) => JSON.parse(tweet));
 			const regexFilter = new RegExp(data.keyword.replace(' ', '|'), 'i');
 
-			const filteredCrawled = crawled.filter((c: any) =>
+			const filteredCrawled = uniqueCrawled.filter((c: any) =>
 				regexFilter.test(c.full_text)
 			);
 			log(`[CrawlerWorker] Filtered crawled tweets for keyword "${data.keyword}": ${filteredCrawled.length} tweets found`, "info");
@@ -151,6 +155,42 @@ export default class CrawlerWorker implements WorkerInterface {
 						});
 						return;
 					}
+					// save to csv file on dir results by tweetToken
+					const fs = require('fs');
+					const path = `./results`;
+
+					if (!fs.existsSync(path)) {
+						fs.mkdirSync(path, { recursive: true });
+					}
+
+					const filePath = `${path}/${data.tweetToken}_${data.keyword.replace(/\s+/g, "_")}_${data.start_date_crawl}_${data.end_date_crawl}.json`;
+
+					console.log(`[CrawlerWorker] Saving crawled data to file: ${filePath}`, "info");
+					console.log(`[CrawlerWorker] Crawled data length: ${crawledDataFromDatabase.length}`, "info");
+					console.log(`[CrawlerWorker] Crawled data example:`, crawledDataFromDatabase[0], "info");
+					//convert json to csv format
+
+					// write to file
+					
+					// save to csv file
+					fs.writeFile(
+						filePath,
+						JSON.stringify(crawledDataFromDatabase, null, 2),
+						(err: any) => {
+							if (err) {
+								log(
+									`[CrawlerWorker] Error saving crawled data to file: ${err.message}`,
+									"error"
+								);
+							} else {
+								log(
+									`[CrawlerWorker] Successfully saved crawled data to file: ${filePath}`,
+									"success"
+								);
+							}
+						}
+					);
+
 					sendMessagetoSupervisor({
 						messageId: message.messageId,
 						status: "completed",
@@ -190,7 +230,7 @@ export default class CrawlerWorker implements WorkerInterface {
 			messageId: messageId,
 			status: "completed",
 			data: {
-				keyword,
+				keyword:keyword.split('lang')[0].trim(),
 				start_date: main_range.start,
 				end_date: main_range.end,
 			},
@@ -304,7 +344,7 @@ export default class CrawlerWorker implements WorkerInterface {
 		const currentRangeParam = param.splited_range[nestedIndex];
 		const currentRange = currentRangeParam.main_range;
 
-		const lockKey = `${keyword}:${currentRange.start}:${currentRange.end}`;
+		const lockKey = `${keyword.split('lang')[0]}:${currentRange.start}:${currentRange.end}`;
 
 		try {
 			// Acquire lock for current range
@@ -321,7 +361,8 @@ export default class CrawlerWorker implements WorkerInterface {
 			 const crawledData:any = await crawl({
 			 	ACCESS_TOKEN: access_token,
 			 	DEBUG_MODE: false,
-			 	SEARCH_KEYWORDS: keyword,
+				 SEARCH_KEYWORDS: `${keyword}`,
+
 			 	TARGET_TWEET_COUNT: 500,
 			 	OUTPUT_FILENAME: `tweets2_${keyword.replace(/\s+/g, "_")}_${
 		 		currentRange.start

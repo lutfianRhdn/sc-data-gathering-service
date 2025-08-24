@@ -176,7 +176,8 @@ export async function crawl({
           reachTimeout++;
           console.info(chalk.yellow(`Timeout reached ${reachTimeout} times, making sure again...`));
           timeoutCount = 0;
-
+          // refresh the page to make sure we are still on the same page
+          // await page.reload();
           await scrollUp(page);
           await page.waitForTimeout(2000);
           await scrollDown(page);
